@@ -1,0 +1,3999 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PCB 製程流程與橫切面演進示意圖產生器 | PCB Process & Cross-Section Studio</title>
+<style>
+  :root {
+    --bg-app: #0b1120;
+    --bg-panel: #111827;
+    --bg-card: #1e293b;
+    --bg-card-hover: #26354d;
+    --bg-input: #0f172a;
+    --border: #334155;
+    --border-highlight: #38bdf8;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --accent: #0ea5e9;
+    --accent-hover: #0284c7;
+    --emerald: #10b981;
+    --amber: #f59e0b;
+    --rose: #f43f5e;
+    --purple: #a855f7;
+    --canvas-bg: #0f172a;
+    --canvas-grid: rgba(148, 163, 184, 0.08);
+    --canvas-text: #f8fafc;
+    --canvas-subtext: #94a3b8;
+    --canvas-card: #1e293b;
+    --canvas-border: #334155;
+  }
+
+  body.light-theme {
+    --bg-app: #f1f5f9;
+    --bg-panel: #ffffff;
+    --bg-card: #f8fafc;
+    --bg-card-hover: #e2e8f0;
+    --bg-input: #ffffff;
+    --border: #cbd5e1;
+    --border-highlight: #0284c7;
+    --text-main: #0f172a;
+    --text-muted: #475569;
+    --accent: #0284c7;
+    --accent-hover: #0369a1;
+    --canvas-bg: #ffffff;
+    --canvas-grid: rgba(15, 23, 42, 0.055);
+    --canvas-text: #0f172a;
+    --canvas-subtext: #475569;
+    --canvas-card: #f8fafc;
+    --canvas-border: #cbd5e1;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", Roboto, sans-serif;
+    background: var(--bg-app);
+    color: var(--text-main);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  header {
+    height: 60px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    flex-shrink: 0;
+    z-index: 20;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: #fff;
+    font-size: 15px;
+    letter-spacing: -0.5px;
+    box-shadow: 0 2px 10px rgba(14, 165, 233, 0.35);
+  }
+
+  .brand-title h1 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+  }
+
+  .brand-title p {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-main);
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+
+  .btn:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-highlight);
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+  }
+
+  .btn-emerald {
+    background: var(--emerald);
+    border-color: var(--emerald);
+    color: #fff;
+  }
+
+  .btn-emerald:hover {
+    filter: brightness(1.08);
+  }
+
+  .divider-v {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+
+  /* Main Workspace */
+  .workspace {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Left Sidebar: Process Builder */
+  .sidebar {
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-section {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Templates Bar */
+  .template-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .tpl-btn {
+    padding: 6px 8px;
+    font-size: 11.5px;
+    text-align: left;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+
+  .tpl-btn:hover {
+    border-color: var(--accent);
+    background: var(--bg-card-hover);
+  }
+
+  .tpl-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Palette Library */
+  .palette-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+
+  .palette-tab {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.12s;
+  }
+
+  .palette-tab:hover {
+    border-color: var(--accent);
+    color: var(--text-main);
+  }
+
+  .palette-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .palette-items {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    max-height: 210px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .palette-chip {
+    padding: 7px 8px;
+    border-radius: 6px;
+    border: 1px dashed var(--border);
+    background: var(--bg-input);
+    color: var(--text-main);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    transition: all 0.12s;
+  }
+
+  .palette-chip:hover {
+    border-style: solid;
+    border-color: var(--accent);
+    background: var(--bg-card-hover);
+    transform: translateY(-1px);
+  }
+
+  .palette-chip .plus {
+    color: var(--accent);
+    font-weight: 800;
+    font-size: 13px;
+  }
+
+  /* Active Sequence List */
+  .sequence-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 12px 14px;
+  }
+
+  .sequence-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 4px;
+  }
+
+  .step-item {
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    position: relative;
+  }
+
+  .step-item:hover {
+    border-color: #64748b;
+  }
+
+  .step-item.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.25);
+    background: var(--bg-card-hover);
+  }
+
+  .step-item.dragging {
+    opacity: 0.45;
+    border-style: dashed;
+  }
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .drag-handle {
+    cursor: grab;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 3px;
+    user-select: none;
+  }
+
+  .step-badge {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .step-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .step-title-row {
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .step-note-row {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .step-actions {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .icon-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .icon-btn:hover {
+    background: var(--bg-input);
+    color: var(--text-main);
+    border-color: var(--border);
+  }
+
+  .icon-btn.danger:hover {
+    color: var(--rose);
+    border-color: var(--rose);
+  }
+
+  /* Step Editor Drawer inside Active Step */
+  .step-editor {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .step-item.active .step-editor {
+    display: flex;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+  }
+
+  .field-row label {
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .field-row input,
+  .field-row select {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    width: 100%;
+  }
+
+  .field-row input:focus,
+  .field-row select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /* Right Main Area: Dual Linked Views */
+  .main-view {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--canvas-bg);
+    background-image:
+      linear-gradient(to right, var(--canvas-grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--canvas-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* View Mode Bar */
+  .view-bar {
+    height: 46px;
+    padding: 0 18px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .mode-tabs {
+    display: flex;
+    gap: 6px;
+  }
+
+  .mode-tab {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .mode-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .playback-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .step-counter {
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 90px;
+    text-align: center;
+  }
+
+  /* Split View Container */
+  .canvas-scroll {
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .viz-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .viz-card-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+
+  .viz-card-body {
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: auto;
+    background: var(--canvas-bg);
+  }
+
+  svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Legend Strip */
+  .legend-bar {
+    padding: 8px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+
+  .legend-swatch {
+    width: 14px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.25);
+  }
+
+  /* Quick Text Input Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .modal-backdrop.open {
+    display: flex;
+  }
+
+  .modal {
+    width: 560px;
+    max-width: 92vw;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  }
+
+  .modal h3 {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .modal p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .modal textarea {
+    width: 100%;
+    height: 130px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-main);
+    padding: 10px;
+    font-family: monospace;
+    font-size: 13px;
+    resize: vertical;
+    margin-bottom: 12px;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Toast notification */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--emerald);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.25s ease;
+    z-index: 200;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Header -->
+<header>
+  <div class="brand">
+    <div class="brand-icon">PCB</div>
+    <div class="brand-title">
+      <h1>PCB 製程流程與橫切面演進示意圖產生器</h1>
+      <p>自由排列製程積木・即時推演板材物理結構・一鍵匯出簡報級 SVG / PNG 圖表</p>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn" onclick="openQuickSyntaxModal()" title="打字輸入流程快速轉換">
+      <span>⚡ 文字語法快速產生</span>
+    </button>
+    <button class="btn" onclick="toggleTheme()" id="themeBtn">
+      <span>☀️ 切換白底報告模式</span>
+    </button>
+    <div class="divider-v"></div>
+    <button class="btn" onclick="exportProjectJSON()">💾 儲存 JSON</button>
+    <button class="btn" onclick="document.getElementById('importJsonInput').click()">📂 載入 JSON</button>
+    <input type="file" id="importJsonInput" accept=".json" style="display:none" onchange="importProjectJSON(event)" />
+    <div class="divider-v"></div>
+    <button class="btn btn-primary" onclick="exportSVG('current')">⬇️ 匯出 SVG (向量無損)</button>
+    <button class="btn btn-emerald" onclick="exportPNG('current')">📸 匯出高解析 PNG (簡報用)</button>
+  </div>
+</header>
+
+<!-- Main Workspace -->
+<div class="workspace">
+
+  <!-- Left Sidebar: Builder -->
+  <aside class="sidebar">
+    <!-- 1. Preset Templates -->
+    <div class="sidebar-section">
+      <div class="section-title">
+        <span>1. 快速範本 (Preset Templates)</span>
+        <span style="font-size:10.5px; font-weight:500;">點擊套用並可自由改序</span>
+      </div>
+      <div class="template-grid">
+        <button class="tpl-btn" onclick="loadTemplate('2layer')">
+          <span class="tpl-dot" style="background:#38bdf8"></span>標準雙面板 PTH
+        </button>
+        <button class="tpl-btn" onclick="loadTemplate('4layer')">
+          <span class="tpl-dot" style="background:#10b981"></span>標準四層板壓合
+        </button>
+        <button class="tpl-btn" onclick="loadTemplate('hdi')">
+          <span class="tpl-dot" style="background:#a855f7"></span>HDI 雷射盲埋孔
+        </button>
+        <button class="tpl-btn" onclick="loadTemplate('ptfe')">
+          <span class="tpl-dot" style="background:#f59e0b"></span>高頻 PTFE 無玻纖板
+        </button>
+        <button class="tpl-btn" onclick="loadTemplate('multicore')">
+          <span class="tpl-dot" style="background:#22c55e"></span>多張 Core 壓合 (6/8層)
+        </button>
+        <button class="tpl-btn" onclick="loadTemplate('mn_hybrid')">
+          <span class="tpl-dot" style="background:#ec4899"></span>M+N 異質混壓對壓
+        </button>
+        <button class="tpl-btn" onclick="loadTemplate('embedded')">
+          <span class="tpl-dot" style="background:#f43f5e"></span>內埋元件封裝 (Embedded)
+        </button>
+        <button class="tpl-btn" onclick="loadTemplate('msap')">
+          <span class="tpl-dot" style="background:#6366f1"></span>mSAP / SAP 半加成法
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. Building Block Library -->
+    <div class="sidebar-section">
+      <div class="section-title">
+        <span>2. 新增製程積木 (點擊插入至流程)</span>
+      </div>
+      <div class="palette-tabs" id="paletteTabs"></div>
+      <div class="palette-items" id="paletteItems"></div>
+    </div>
+
+    <!-- 3. Sortable Active Flow Sequence -->
+    <div class="sequence-container">
+      <div class="section-title">
+        <span>3. 目前製程順序 (可拖拉排序 / 點擊改參數)</span>
+        <button class="icon-btn danger" onclick="clearAllSteps()" title="清空全部步驟" style="width:auto;padding:0 6px;font-size:11px;">清空</button>
+      </div>
+      <div class="sequence-list" id="sequenceList"></div>
+    </div>
+  </aside>
+
+  <!-- Right Main Area -->
+  <main class="main-view">
+    <div class="view-bar">
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tabDual" onclick="setViewMode('dual')">
+          🔗 雙視圖連動模式 (流程圖 + 單站橫切面放大)
+        </button>
+        <button class="mode-tab" id="tabStoryboard" onclick="setViewMode('storyboard')">
+          📊 全流程演進總覽海報 (一圖看懂每站橫切面變化・適合貼簡報)
+        </button>
+      </div>
+
+      <div class="playback-controls">
+        <button class="btn" onclick="stepPrev()" title="上一步 (鍵盤 ←)">◀ 上一站</button>
+        <span class="step-counter" id="stepCounterText">Step 1 / 8</span>
+        <button class="btn" onclick="stepNext()" title="下一步 (鍵盤 →)">下一站 ▶</button>
+        <button class="btn" id="playBtn" onclick="toggleAutoPlay()">▶ 自動播放</button>
+      </div>
+    </div>
+
+    <!-- Scrollable Canvas Area -->
+    <div class="canvas-scroll" id="canvasScroll">
+      <!-- Dual View Mode Container -->
+      <div id="dualViewContainer" style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Top: Flowchart Node View -->
+        <div class="viz-card">
+          <div class="viz-card-header">
+            <span>🗺️ 製程節點方塊流程圖 (Process Node Flowchart) — 點擊任意節點切換橫切面</span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn" style="padding:3px 8px; font-size:11px;" onclick="exportSVG('flowchart')">匯出流程圖 SVG</button>
+              <button class="btn" style="padding:3px 8px; font-size:11px;" onclick="exportPNG('flowchart')">匯出流程圖 PNG</button>
+            </div>
+          </div>
+          <div class="viz-card-body" id="flowchartSvgHolder"></div>
+        </div>
+
+        <!-- Bottom: Cross-Section Detail View -->
+        <div class="viz-card">
+          <div class="viz-card-header">
+            <span id="crossSectionHeaderTitle">🔬 PCB 橫切面物理結構演進圖 (Cross-Section Stackup Evolution)</span>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <label style="font-size:11.5px; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                <input type="checkbox" id="comparePrevCheckbox" checked onchange="renderAll()" />
+                同時顯示「上一站結構對比」
+              </label>
+              <button class="btn" style="padding:3px 8px; font-size:11px;" onclick="exportSVG('crosssection')">匯出此站橫切面 SVG</button>
+              <button class="btn" style="padding:3px 8px; font-size:11px;" onclick="exportPNG('crosssection')">匯出此站橫切面 PNG</button>
+            </div>
+          </div>
+          <div class="viz-card-body" id="crossSectionSvgHolder"></div>
+          <div class="legend-bar">
+            <div class="legend-item"><span class="legend-swatch" style="background:#d97706"></span>基板銅 / 內外層銅 (Cu Foil)</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:#f59e0b"></span>電鍍銅 / mSAP 圖形銅 (Plated Cu)</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:#84cc16"></span>Core 核心基材 (Single/Multi-Core)</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:#10b981"></span>Prepreg / ABF 增層膜 (PP/RCC/ABF)</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:#94a3b8"></span>樹脂塞孔油墨 (Via Plug Ink)</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:#e11d48"></span>內埋晶片 / 被動元件 (Embedded Die/Comp)</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:#3b82f6"></span>乾膜光阻 (DFR)</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:#059669"></span>防焊綠漆 (Solder Mask)</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:#fde047"></span>表面處理化金 (ENIG)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Storyboard Poster Mode Container -->
+      <div id="storyboardViewContainer" style="display:none; flex-direction:column; gap:16px;">
+        <div class="viz-card">
+          <div class="viz-card-header">
+            <span>📊 全流程 PCB 橫切面演進總覽圖 (Complete Process Evolution Storyboard)</span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary" style="padding:4px 10px; font-size:11.5px;" onclick="exportSVG('storyboard')">⬇️ 匯出全流程總覽 SVG</button>
+              <button class="btn btn-emerald" style="padding:4px 10px; font-size:11.5px;" onclick="exportPNG('storyboard')">📸 匯出全流程總覽高解析 PNG</button>
+            </div>
+          </div>
+          <div class="viz-card-body" id="storyboardSvgHolder"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Quick Text Syntax Modal -->
+<div class="modal-backdrop" id="syntaxModal">
+  <div class="modal">
+    <h3>⚡ 文字語法快速產生流程 (Text-to-Process Generator)</h3>
+    <p>
+      您可以直接用箭頭 <code>-></code> 或換行輸入想要的 PCB 流程步驟（支援中英文關鍵字與括號備註），系統會自動辨識對應的物理算子並產生流程圖與橫切面圖！<br/>
+      範例格式：<code>開料(PTFE無玻纖) -> 內層乾膜 -> 內層蝕刻 -> 壓合(雙面增層) -> 雷射鑽孔(CO2 80um) -> 等離子除膠渣 -> 電鍍填孔 -> 外層蝕刻 -> 防焊 -> 化金</code>
+    </p>
+    <textarea id="syntaxTextarea">開料(FR4 Core 1oz) -> 內層乾膜 -> 內層蝕刻 -> 棕化 -> 多層壓合(4層板) -> 機械鑽孔(0.25mm) -> 雷射鑽孔(盲孔 80um) -> 除膠渣(Plasma) -> 化學銅PTH -> 電鍍(盲孔填銅) -> 外層乾膜 -> 外層蝕刻 -> AOI檢驗 -> 防焊(綠漆) -> 表面處理(ENIG化金)</textarea>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeQuickSyntaxModal()">取消</button>
+      <button class="btn btn-primary" onclick="applyQuickSyntax()">✨ 立即轉換並產生示意圖</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toastMsg">已成功匯出！</div>
+
+<script>
+/* ============================================================================
+   1. BUILDING BLOCK CATALOG (PCB 製程積木定義庫)
+   ============================================================================ */
+const CATEGORIES = [
+  { id: 'all', name: '全部積木' },
+  { id: 'inner', name: '基板與內層' },
+  { id: 'lam', name: '壓合增層' },
+  { id: 'drill', name: '鑽孔與除膠' },
+  { id: 'plate', name: '電鍍與外層' },
+  { id: 'finish', name: '防焊與後段' }
+];
+
+const STEP_LIBRARY = {
+  substrate_cut: {
+    type: 'substrate_cut',
+    cat: 'inner',
+    color: '#0ea5e9',
+    defaultTitle: '開料與基板準備',
+    defaultNote: 'Core CCL 雙面銅箔基板裁切與清潔',
+    defaultParam: 'FR4 Core (18μm Cu)',
+    desc: '準備初始雙面覆銅基板 (Core CCL)，包含中央絕緣介電層與上下壓延/電解銅箔。'
+  },
+  inner_dfr: {
+    type: 'inner_dfr',
+    cat: 'inner',
+    color: '#3b82f6',
+    defaultTitle: '內層乾膜壓膜與曝光顯影',
+    defaultNote: '貼覆感光乾膜 (DFR) 並定義內層線路圖形',
+    defaultParam: 'LDI 曝光 / 顯影',
+    desc: '在銅箔表面貼上感光乾膜光阻，經過曝光與顯影後，保留線路區域的乾膜作為蝕刻保護層。'
+  },
+  inner_etch: {
+    type: 'inner_etch',
+    cat: 'inner',
+    color: '#ef4444',
+    defaultTitle: '內層蝕刻與去膜 (DES)',
+    defaultNote: '藥水蝕刻裸露銅面並剝除乾膜，形成內層線路',
+    defaultParam: 'CuCl2 蝕刻 + 剝膜',
+    desc: '蝕刻液移除無乾膜保護的裸銅，接著剝除殘留乾膜，留下精準的內層訊號線與導通墊 (Pad)。'
+  },
+  oxide: {
+    type: 'oxide',
+    cat: 'inner',
+    color: '#b45309',
+    defaultTitle: '內層棕化 / 黑化處理',
+    defaultNote: '微蝕粗化內層銅面，提升壓合樹脂抓附力',
+    defaultParam: 'Brown Oxide 有機金屬粗化',
+    desc: '在內層銅線路表面生成微米級有機金屬氧化粗化層，大幅增加後續 Prepreg 壓合時的抗剝離強度。'
+  },
+  lamination: {
+    type: 'lamination',
+    cat: 'lam',
+    color: '#10b981',
+    defaultTitle: '多層壓合 (Lamination)',
+    defaultNote: '疊合 Prepreg 半固化片與外層銅箔並高溫熱壓',
+    defaultParam: 'PP 半固化片 + 外層 1/2oz 銅',
+    desc: '將半固化片 (Prepreg) 與外層銅箔疊合於內層板上下，經高溫高壓真空壓合使樹脂流動填滿內層線路間隙並固化。'
+  },
+  rcc_buildup: {
+    type: 'rcc_buildup',
+    cat: 'lam',
+    color: '#14b8a6',
+    defaultTitle: '無玻纖樹脂銅增層 (RCC / ABF)',
+    defaultNote: '壓合純樹脂/ABF增層膜與超薄銅箔 (適合 mSAP / 高頻)',
+    defaultParam: 'ABF / 無玻纖樹脂增層',
+    desc: '採用無玻纖布的純樹脂塗佈銅箔 (RCC)、ABF 增層膜或高頻氟樹脂薄膜進行增層壓合，消除玻纖效應並利於微盲孔與 mSAP 加工。'
+  },
+  multicore_lam: {
+    type: 'multicore_lam',
+    cat: 'lam',
+    color: '#22c55e',
+    defaultTitle: '多張 Core 疊合壓合 (Multi-Core Stackup)',
+    defaultNote: '將多張已蝕刻棕化的內層 Core (Core 1 + Core 2) 夾 PP 壓合成高層板',
+    defaultParam: 'Core 1 + PP + Core 2 多層壓合',
+    desc: '將兩張以上各自完成內層線路與棕化的 Core 基板（例如 L2/L3 Core 與 L4/L5 Core），中間夾入半固化片 (Prepreg) 與外層銅箔一次壓合成 6 層/8 層多層板。'
+  },
+  subboard_start_n: {
+    type: 'subboard_start_n',
+    cat: 'lam',
+    color: '#8b5cf6',
+    defaultTitle: '切換製作子板 N (Start Sub-Board N)',
+    defaultNote: '暫存已設計完成的「子板 M (Sub-Board M)」結構，切換至全新工位開始獨立設計「子板 N (Sub-Board N)」流程',
+    defaultParam: '暫存子板 M ➔ 開始製作子板 N',
+    desc: '在 M+N 雙板對壓流程中，先完成子板 M 的開料、鑽孔、電鍍、塞孔或蝕刻後，加入此站即可將「子板 M」封存並重置畫布，接著自由設計「子板 N」的專屬製程，最後再使用「M+N 子板對接壓合」將兩塊板子上下對壓結合。'
+  },
+  mn_sub_lam: {
+    type: 'mn_sub_lam',
+    cat: 'lam',
+    color: '#ec4899',
+    defaultTitle: 'M+N 兩板對接壓合 (M+N Sub-Board Bonding)',
+    defaultNote: '將前段獨立設計完成的「子板 M (上板)」與「子板 N (下板)」透過中間 Bonding PP 對接熱壓合成 M+N 複合板',
+    defaultParam: '子板 M + Bonding PP + 子板 N 對接壓合',
+    desc: '將前段各自完成線路、通孔、塞孔或盲孔的「子板 M」與「子板 N」上下對位，中間夾入 Bonding PP 半固化片熱壓合為單一 M+N 複合板，完整保留兩塊子板各自設計的材質、層數、塞孔與導通孔結構，並可接續進行合板後的貫穿鑽孔與外層線路製程。'
+  },
+  cavity_embed: {
+    type: 'cavity_embed',
+    cat: 'lam',
+    color: '#e11d48',
+    defaultTitle: '內埋元件挖槽與貼裝 (Embedded Component)',
+    defaultNote: '於基板雷射/機械挖槽 (Cavity) 並精準貼裝內埋主動晶片 (IC Die) 或被動元件',
+    defaultParam: 'Cavity 挖槽 + Die/MLCC 內埋貼裝',
+    desc: '在核心層或增層中開出精密凹槽 (Cavity)，將超薄裸晶 (Active IC Die，含銅柱電極 Cu Pillar) 或被動電容電阻置入基板內部，後續透過壓合封裝與雷射鑽孔直接導通元件端子。'
+  },
+  mech_drill: {
+    type: 'mech_drill',
+    cat: 'drill',
+    color: '#f59e0b',
+    defaultTitle: '機械鑽孔 (Mechanical Drill)',
+    defaultNote: 'CNC 高速鑽針加工貫穿導通孔 (PTH)',
+    defaultParam: '孔徑 Ø0.20mm 機械通孔',
+    desc: '使用硬質合金鑽針高速貫穿整張多層板，形成連接各層銅墊的機械通孔通道 (Through Hole)。'
+  },
+  laser_drill: {
+    type: 'laser_drill',
+    cat: 'drill',
+    color: '#a855f7',
+    defaultTitle: '雷射鑽孔 (Laser Blind Via)',
+    defaultNote: 'CO2 / UV 雷射燒蝕外層介電質直達內層銅墊',
+    defaultParam: 'μVia Ø75μm 錐形盲孔',
+    desc: '以雷射光束精準燒蝕增層介電材料並停在內層目標銅墊 (Capture Pad) 上，形成上寬下窄的微盲孔 (Blind Microvia)。'
+  },
+  desmear: {
+    type: 'desmear',
+    cat: 'drill',
+    color: '#ec4899',
+    defaultTitle: '除膠渣與電漿表面活化 (Desmear / Plasma)',
+    defaultNote: '清除鑽孔殘膠並粗化活化孔壁與高頻基材',
+    defaultParam: 'CF4/O2 Plasma + KMnO4',
+    desc: '利用電漿 (Plasma) 或高錳酸鉀藥水清除鑽孔高溫產生的環氧/氟樹脂殘膠 (Smear)，並將疏水孔壁改質為親水微粗糙表面。'
+  },
+  pth_seed: {
+    type: 'pth_seed',
+    cat: 'plate',
+    color: '#d97706',
+    defaultTitle: '化學銅導通 (Electroless Cu / PTH)',
+    defaultNote: '在絕緣孔壁與盲孔底部沉積微米級導電種子銅層',
+    defaultParam: '鈀膠活化 + 化學沉銅 0.5μm',
+    desc: '透過鈀催化劑在原本不導電的樹脂孔壁上化學還原沉積一層薄銅，使通孔與盲孔內壁具備導電性。'
+  },
+  panel_plate: {
+    type: 'panel_plate',
+    cat: 'plate',
+    color: '#f97316',
+    defaultTitle: '全板電鍍 / 填孔電鍍 (Electroplating)',
+    defaultNote: '加厚孔壁銅厚並進行微盲孔電鍍填平 (Via Fill)',
+    defaultParam: '孔壁銅 >20μm + 盲孔填銅',
+    desc: '利用硫酸銅電鍍槽與脈衝/填孔添加劑，加厚通孔孔壁銅層並將雷射盲孔完全填滿實心銅。'
+  },
+  resin_plug: {
+    type: 'resin_plug',
+    cat: 'plate',
+    color: '#64748b',
+    defaultTitle: '樹脂塞孔與烘烤 (Resin Plugging)',
+    defaultNote: '真空印刷塞孔樹脂填滿導通孔並高溫烘烤固化 (孔口微凸)',
+    defaultParam: '真空樹脂塞孔 + 烘烤固化',
+    desc: '將永久性環氧塞孔樹脂 (Resin Ink) 在真空環境下塞入電鍍後的導通孔內，烘烤固化後孔口上下會殘留突出的樹脂帽頭。'
+  },
+  planar_grind: {
+    type: 'planar_grind',
+    cat: 'plate',
+    color: '#0d9488',
+    defaultTitle: '塞孔刷磨平坦化 (Planarization Grinding)',
+    defaultNote: '陶瓷磨刷研磨去除孔口多餘突出樹脂與表面銅瘤，使板面完全平整',
+    defaultParam: '陶瓷滾輪刷磨 + 微蝕整平',
+    desc: '使用精密陶瓷磨刷輪或砂帶研磨板面，將樹脂塞孔後突出孔口的樹脂以及填孔電鍍多餘銅厚刷磨至與銅面完全齊平 (可接續做 Cap Plating 蓋帽電鍍)。'
+  },
+  outer_dfr: {
+    type: 'outer_dfr',
+    cat: 'plate',
+    color: '#2563eb',
+    defaultTitle: '外層乾膜壓膜與曝光 (Outer Photo)',
+    defaultNote: '貼覆外層乾膜並蓋住導通孔與外層線路區',
+    defaultParam: 'LDI 高精度外層對位曝光',
+    desc: '在外層銅面上壓合感光乾膜，曝光顯影後覆蓋住導通孔環 (Tenting) 與外層走線區域，保護其不被蝕刻。'
+  },
+  outer_etch: {
+    type: 'outer_etch',
+    cat: 'plate',
+    color: '#dc2626',
+    defaultTitle: '外層蝕刻與去膜 (Outer Etch)',
+    defaultNote: '蝕刻移除多餘底銅並剝膜，完成外層精密線路',
+    defaultParam: '鹼性蝕刻 + 線寬公差控制',
+    desc: '蝕刻掉未被乾膜保護的外層銅箔，再退除乾膜，完整呈現外層獨立焊墊、孔環與高速訊號走線。'
+  },
+  sap_pattern_plate: {
+    type: 'sap_pattern_plate',
+    cat: 'plate',
+    color: '#6366f1',
+    defaultTitle: 'SAP/mSAP 圖形電鍍與退膜 (Pattern Plate)',
+    defaultNote: '在極薄種子銅上貼厚乾膜開槽，於乾膜槽內長出垂直線路與填盲孔後退膜',
+    defaultParam: 'mSAP 圖形電鍍 (L/S ≤15/15μm) + 退乾膜',
+    desc: '半加成法 (mSAP/SAP) 核心製程：乾膜不蓋住線路，而是將線路區域開槽露出種子銅，在乾膜槽內電鍍長出高深寬比矩形截面銅線與實心盲孔，再剝除乾膜（此時線間仍留有極薄底部種子銅）。'
+  },
+  sap_flash_etch: {
+    type: 'sap_flash_etch',
+    cat: 'plate',
+    color: '#4f46e5',
+    defaultTitle: 'SAP/mSAP 閃蝕去種子層 (Flash Etch)',
+    defaultNote: '微分閃蝕移除線路間裸露的極薄化學銅/底銅 (1~3μm)，呈現零側蝕垂直線路',
+    defaultParam: 'Flash Etch 閃蝕移除 Seed Layer',
+    desc: '利用快速微蝕藥水將線路間隙底部的極薄種子銅層 (Seed Cu 1~3μm) 瞬間咬除，不需乾膜保護也不傷及厚電鍍線路，達成傳統減成法無法做到的超細線寬線距與近乎 90° 垂直側壁。'
+  },
+  aoi_test: {
+    type: 'aoi_test',
+    cat: 'finish',
+    color: '#06b6d4',
+    defaultTitle: 'AOI 光學檢驗 / 電測 (Inspection)',
+    defaultNote: '自動光學掃描線路開短路、線寬與殘銅缺陷',
+    defaultParam: 'AOI 光學比對 + 飛針電測',
+    desc: '透過高解析度光學鏡頭與雷射掃描比對 CAM 設計圖，檢測是否有斷線、短路、缺口或蝕刻不潔。'
+  },
+  solder_mask: {
+    type: 'solder_mask',
+    cat: 'finish',
+    color: '#059669',
+    defaultTitle: '防焊綠漆塗佈與開窗 (Solder Mask)',
+    defaultNote: '全板塗佈防焊絕緣漆，僅曝光顯影露出焊接墊',
+    defaultParam: 'LPI 感光防焊漆 (SRO 開窗)',
+    desc: '塗佈液態感光防焊油墨保護外層銅線免於氧化與焊接短路，並透過曝光顯影將需要焊接的 Pad 開窗裸露出來。'
+  },
+  surface_finish: {
+    type: 'surface_finish',
+    cat: 'finish',
+    color: '#eab308',
+    defaultTitle: '表面處理：化鎳浸金 (ENIG / OSP)',
+    defaultNote: '於裸露銅墊與孔壁沉積鎳金保護層以利焊接',
+    defaultParam: 'ENIG (Ni 4μm / Au 0.05μm)',
+    desc: '在防焊開窗露出的銅墊與通孔表面進行無電鍍鎳金 (ENIG)，防止銅面氧化並提供極佳的平整度與吃錫性。'
+  },
+  silkscreen: {
+    type: 'silkscreen',
+    cat: 'finish',
+    color: '#64748b',
+    defaultTitle: '文字印刷與成型 (Silkscreen & Route)',
+    defaultNote: '噴印白色元件標示文字 (C1, U1) 與外框成型',
+    defaultParam: 'UV 噴墨文字 + CNC 撈邊',
+    desc: '在防焊層表面印上白色元件位置代號、極性標記與版號，最後進行外框裁切成型與終檢包裝。'
+  },
+  custom_step: {
+    type: 'custom_step',
+    cat: 'finish',
+    color: '#8b5cf6',
+    defaultTitle: '自訂製程站點 (Custom Step)',
+    defaultNote: '可自由輸入特殊處理、烘烤、切片或退火製程',
+    defaultParam: '自訂製程條件設定',
+    desc: '使用者自訂的特殊製程步驟，保留目前板材橫切面結構並於上方標示專屬製程動作與規範。'
+  }
+};
+
+/* ============================================================================
+   2. PRESET TEMPLATES (4 組經典製程範本)
+   ============================================================================ */
+const TEMPLATES = {
+  '2layer': [
+    { type: 'substrate_cut', title: '雙面板開料 (Cutting)', note: '準備雙面覆銅板 (FR4 Core)', param: 'FR4 1.6mm / 1oz Cu' },
+    { type: 'mech_drill', title: '機械鑽孔 (CNC Drilling)', note: '鑽出上下層導通用貫穿孔', param: 'Ø0.30mm 機械通孔' },
+    { type: 'desmear', title: '除膠渣與孔壁清潔 (Desmear)', note: '去除鑽孔殘膠並微蝕銅環', param: '高錳酸鉀除膠渣' },
+    { type: 'pth_seed', title: '化學銅導通 (PTH)', note: '在絕緣孔壁沉積導電薄銅層', param: '化學沉銅 0.5μm' },
+    { type: 'panel_plate', title: '全板電鍍加厚 (Panel Plating)', note: '加厚孔壁銅與表面銅層', param: '孔壁銅厚 ≥20μm' },
+    { type: 'outer_dfr', title: '外層乾膜與曝光 (Outer Photo)', note: '貼乾膜保護孔環與線路區', param: 'LDI 蓋孔曝光' },
+    { type: 'outer_etch', title: '外層蝕刻與剝膜 (Outer Etch)', note: '蝕刻多餘銅面形成雙面線路', param: '鹼性蝕刻線' },
+    { type: 'solder_mask', title: '防焊綠漆與開窗 (Solder Mask)', note: '塗佈綠漆並露出焊墊開窗', param: 'LPI 綠漆開窗' },
+    { type: 'surface_finish', title: '表面處理化金 (ENIG)', note: '裸銅焊墊與孔壁鍍鎳金保護', param: 'ENIG 化鎳浸金' }
+  ],
+  '4layer': [
+    { type: 'substrate_cut', title: '內層基板開料 (Inner Cut)', note: '裁切內層 Core (L2/L3) 雙面銅基板', param: 'FR4 Core 0.8mm' },
+    { type: 'inner_dfr', title: '內層乾膜曝光 (Inner Photo)', note: '壓乾膜並曝光顯影定義 L2/L3 線路', param: 'LDI 內層曝光' },
+    { type: 'inner_etch', title: '內層蝕刻去膜 (Inner DES)', note: '蝕刻形成內層線路與導通墊', param: '酸性氯化銅蝕刻' },
+    { type: 'oxide', title: '內層棕化粗化 (Oxide)', note: '粗化內層銅面強化壓合結合力', param: 'Brown Oxide 處理' },
+    { type: 'lamination', title: '四層板壓合 (Lamination)', note: '上下疊合 PP 半固化片與 L1/L4 外層銅箔', param: '2116 PP + 1/2oz Cu' },
+    { type: 'mech_drill', title: '機械鑽孔 (Drilling)', note: '貫穿四層板形成通孔通道', param: 'Ø0.25mm PTH 通孔' },
+    { type: 'desmear', title: '除膠渣處理 (Desmear)', note: '清除內層銅環孔壁上的環氧樹脂殘膠', param: '化學除膠渣 + 微蝕' },
+    { type: 'pth_seed', title: '化學銅導通 (Electroless Cu)', note: '使四層貫穿孔壁具備導電薄銅', param: 'PTH 化學銅' },
+    { type: 'panel_plate', title: '電鍍銅加厚 (Electroplating)', note: '加厚外層銅與通孔孔壁銅以導通 L1~L4', param: '電鍍銅 25μm' },
+    { type: 'outer_dfr', title: '外層乾膜圖形轉移 (Outer DFR)', note: '定義 L1/L4 外層線路與孔環保護', param: '外層感光乾膜' },
+    { type: 'outer_etch', title: '外層蝕刻與去膜 (Outer Etch)', note: '蝕刻完成四層板外層走線', param: '精密外層蝕刻' },
+    { type: 'aoi_test', title: '外層 AOI 光學檢測', note: '檢查線寬線距與開短路缺陷', param: 'AOI 自動光學掃描' },
+    { type: 'solder_mask', title: '防焊綠漆塗佈 (Solder Mask)', note: '保護線路並於焊接墊開窗', param: '感光防焊綠漆' },
+    { type: 'surface_finish', title: 'ENIG 化鎳浸金與文字', note: '焊墊鍍金防氧化並提升焊接可靠度', param: 'ENIG + 文字印刷' }
+  ],
+  'hdi': [
+    { type: 'substrate_cut', title: 'HDI 核心層開料', note: '準備高 Tg 薄核心基板 (Core)', param: 'High-Tg Core 0.2mm' },
+    { type: 'inner_dfr', title: '內層精密乾膜曝光', note: '定義細線寬內層線路與雷射目標墊 (Target Pad)', param: 'L/S 50/50μm' },
+    { type: 'inner_etch', title: '內層蝕刻與 AOI', note: '蝕刻完成內層線路與盲孔承接墊', param: '真空蝕刻線' },
+    { type: 'oxide', title: '超粗化棕化處理', note: '低粗糙度奈米棕化降低高頻損耗', param: '低損耗奈米棕化' },
+    { type: 'lamination', title: 'HDI 增層壓合 (1+N+1)', note: '壓合低流膠 PP / 增層介電材與薄銅', param: '1080 PP + 12μm Cu' },
+    { type: 'laser_drill', title: 'CO2/UV 雷射盲孔鑽孔', note: '燒蝕增層介電質直達內層 Target Pad', param: 'μVia Ø75μm 盲孔' },
+    { type: 'mech_drill', title: '機械通孔鑽孔 (PTH)', note: '加工跨層導通的機械貫穿孔', param: 'Ø0.15mm 微通孔' },
+    { type: 'desmear', title: 'Plasma 電漿除膠渣', note: '徹底清除盲孔底部碳化殘膠確保盲孔可靠度', param: 'O2/CF4 電漿清潔' },
+    { type: 'pth_seed', title: '無電鍍化學銅 (PTH)', note: '盲孔底部與通孔壁沉積種子銅', param: '水平式 PTH 沉銅' },
+    { type: 'panel_plate', title: '脈衝填孔電鍍 (Via Fill)', note: '將雷射盲孔完全填平實心銅，並加厚通孔壁銅', param: '盲孔實心填銅電鍍' },
+    { type: 'resin_plug', title: '樹脂塞孔與烘烤 (Resin Plugging)', note: '真空塞入環氧樹脂填滿通孔並高溫固化 (孔口微凸)', param: '真空樹脂塞孔 + 烘烤' },
+    { type: 'planar_grind', title: '塞孔刷磨平坦化 (Planarization)', note: '陶瓷滾輪磨刷去除孔口突出樹脂與表面多餘銅瘤', param: '陶瓷磨刷整平' },
+    { type: 'outer_dfr', title: '外層 LDI 曝光顯影', note: '高精度對位保護盲孔墊與細線路', param: 'LDI 對位 ±12μm' },
+    { type: 'outer_etch', title: '外層精細蝕刻', note: '完成 HDI 外層高密度焊墊與走線', param: '細線路低側蝕控制' },
+    { type: 'solder_mask', title: '防焊開窗 (Solder Mask)', note: 'BGA 高密度防焊壩與焊墊開窗', param: 'LDI 防焊曝光' },
+    { type: 'surface_finish', title: 'ENEPIG / ENIG 表面處理', note: '化鎳鈀浸金提供打線與焊接平坦表面', param: 'ENIG / ENEPIG' }
+  ],
+  'ptfe': [
+    { type: 'substrate_cut', title: '高頻 PTFE 無玻纖基板開料', note: '低 Df 氟樹脂基板與 HVLP 超低粗糙度銅箔', param: 'PTFE 無玻纖 Core (Df<0.0015)' },
+    { type: 'inner_dfr', title: '內層微波傳輸線曝光', note: 'LDI 高精度定義阻抗控制微帶/帶狀線', param: 'LDI 線寬公差 ±8μm' },
+    { type: 'inner_etch', title: '內層高垂直度蝕刻', note: '減少梯形側蝕效應以維持高頻相位穩定', param: '高蝕刻因子精密蝕刻' },
+    { type: 'rcc_buildup', title: '氟樹脂薄膜無玻纖熱壓合', note: '採用純氟樹脂接著膜增層，徹底消除玻纖效應', param: 'Fluoro-Film 熱融合壓合' },
+    { type: 'laser_drill', title: 'UV 紫外光雷射微盲孔', note: '冷加工燒蝕氟樹脂增層形成無碳化微盲孔', param: '355nm UV Laser Ø65μm' },
+    { type: 'mech_drill', title: '低進給高速機械通孔', note: '針對軟質 PTFE 控制鑽針轉速防止拉絲延展', param: '特殊塗層鑽針 Ø0.20mm' },
+    { type: 'desmear', title: 'H2/N2/O2 電漿親水活化改質', note: '打斷 C-F 鍵接枝極性基團，解決 PTFE 不沾附難題', param: '高真空微波 Plasma 改質' },
+    { type: 'pth_seed', title: '高結合力化學銅沉積', note: '於活化後的氟樹脂孔壁形成致密無空洞化學銅', param: '高附著離子鈀 + 化學銅' },
+    { type: 'panel_plate', title: '盲孔填銅與全板電鍍', note: '填平高頻微盲孔降低寄生電感不連續性', param: '低應力盲孔填銅' },
+    { type: 'outer_dfr', title: '外層高頻天線/傳輸線曝光', note: '定義毫米波外層微帶線與接地共面波導', param: 'LDI 外層圖形轉移' },
+    { type: 'outer_etch', title: '外層精密蝕刻與去膜', note: '形成垂直邊緣高頻傳輸線路', param: '垂直側壁精密蝕刻' },
+    { type: 'solder_mask', title: '低損耗防焊漆局部開窗', note: '高頻走線區開窗或採用超低損耗防焊油墨', param: 'Low-Dk/Df 防焊油墨' },
+    { type: 'surface_finish', title: '無磁性表面處理 (Immersion Ag / ENIG)', note: '避免鎳層磁滯損耗或採用薄鎳化金保護焊墊', param: '高頻化銀 / 薄鎳化金' }
+  ],
+  'multicore': [
+    { type: 'substrate_cut', title: '多張內層 Core 分別開料 (Core 1 & Core 2)', note: '準備 L2/L3 Core 1 與 L4/L5 Core 2 雙面覆銅基板', param: '2x Thin Core (0.15mm)' },
+    { type: 'inner_dfr', title: '各內層 Core 乾膜曝光顯影', note: '分別於 Core 1 與 Core 2 壓合乾膜並曝光定義內層圖形', param: 'LDI 雙 Core 同步曝光' },
+    { type: 'inner_etch', title: '各內層 Core 蝕刻與去膜', note: '蝕刻形成 L2/L3 與 L4/L5 四層內層線路與導通墊', param: '內層 DES 蝕刻線' },
+    { type: 'oxide', title: '多張內層 Core 棕化處理', note: '粗化所有內層 Core 銅面並進行 AOI 內層光學檢測', param: 'Brown Oxide + 內層 AOI' },
+    { type: 'multicore_lam', title: '多張 Core 疊板壓合 (Multi-Core Stackup)', note: '將 Core 1 + 中間 PP + Core 2 + 上下外層 PP 與銅箔一次高溫壓合', param: '6層/8層 Multi-Core 壓合' },
+    { type: 'mech_drill', title: '多層貫穿機械鑽孔 (PTH)', note: '鑽穿雙 Core 與多層 PP 結構形成跨層通孔', param: 'Ø0.20mm 機械通孔' },
+    { type: 'desmear', title: '除膠渣與孔壁清潔 (Desmear)', note: '清除多層內層銅環孔壁殘膠確保互連可靠度', param: 'Plasma + 化學除膠渣' },
+    { type: 'pth_seed', title: '化學銅導通 (Electroless Cu)', note: '於多層孔壁沉積導電種子銅連接 L1~L6', param: 'PTH 化學沉銅' },
+    { type: 'panel_plate', title: '全板電鍍加厚 (Panel Plating)', note: '加厚通孔孔壁銅至 25μm 以上', param: '深孔電鍍 Cu ≥25μm' },
+    { type: 'outer_dfr', title: '外層乾膜壓膜與曝光', note: '定義 L1/L6 外層線路與導通孔環保護', param: '外層 LDI 曝光' },
+    { type: 'outer_etch', title: '外層蝕刻與去膜', note: '蝕刻完成多層板外層線路', param: '鹼性蝕刻線' },
+    { type: 'solder_mask', title: '防焊綠漆與表面處理 (ENIG)', note: '塗佈防焊綠漆開窗並完成化金', param: 'LPI 防焊 + ENIG' }
+  ],
+  'mn_hybrid': [
+    { type: 'substrate_cut', title: '【子板 M】高頻 PTFE 基板開料', note: '準備上層子板 M (Sub-Board M) 之高頻無玻纖基板', param: 'Sub-M: PTFE Core' },
+    { type: 'mech_drill', title: '【子板 M】獨立機械鑽孔', note: '於子板 M 加工專屬導通孔 (後續將成為內埋盲埋孔)', param: 'Sub-M Ø0.15mm 鑽孔' },
+    { type: 'pth_seed', title: '【子板 M】化學銅導通 (PTH)', note: '於子板 M 孔壁沉積導電種子銅層', param: 'Sub-M 化學沉銅' },
+    { type: 'panel_plate', title: '【子板 M】電鍍銅加厚', note: '加厚子板 M 孔壁銅與表面銅層', param: 'Sub-M 電鍍銅 20μm' },
+    { type: 'resin_plug', title: '【子板 M】樹脂塞孔與烘烤', note: '將子板 M 的導通孔以環氧樹脂塞滿防止對壓流膠', param: 'Sub-M 真空樹脂塞孔' },
+    { type: 'planar_grind', title: '【子板 M】塞孔刷磨整平', note: '磨平子板 M 孔口突出樹脂使其平整', param: 'Sub-M 陶瓷刷磨' },
+    { type: 'inner_etch', title: '【子板 M】內層結合面線路蝕刻', note: '完成子板 M 朝向接合面的線路蝕刻與棕化', param: 'Sub-M 線路蝕刻完成' },
+    { type: 'subboard_start_n', title: '切換製作子板 N (Start Sub-Board N)', note: '封存已完成的「子板 M」，切換工位開始獨立製作下層「子板 N」', param: '暫存子板 M ➔ 開始子板 N' },
+    { type: 'substrate_cut', title: '【子板 N】FR4 數位控制基板開料', note: '準備下層子板 N (Sub-Board N) 之高 Tg FR4 基板', param: 'Sub-N: High-Tg FR4' },
+    { type: 'mech_drill', title: '【子板 N】獨立機械鑽孔', note: '於子板 N 加工專屬導通孔', param: 'Sub-N Ø0.20mm 鑽孔' },
+    { type: 'pth_seed', title: '【子板 N】化學銅與電鍍導通', note: '完成子板 N 孔壁化學銅與電鍍加厚', param: 'Sub-N 電鍍導通' },
+    { type: 'panel_plate', title: '【子板 N】全板電鍍加厚', note: '加厚子板 N 孔壁與表面銅厚', param: 'Sub-N Cu ≥20μm' },
+    { type: 'inner_etch', title: '【子板 N】內層結合面線路蝕刻', note: '完成子板 N 朝向接合面的線路蝕刻與棕化處理', param: 'Sub-N 線路蝕刻完成' },
+    { type: 'mn_sub_lam', title: '【M+N 對壓】子板 M 與 子板 N 對接壓合', note: '透過中間 Bonding PP 將設計好的「子板 M」與「子板 N」上下對位熱壓合', param: 'Sub-M + PP + Sub-N 對壓' },
+    { type: 'mech_drill', title: '【M+N 合板】全板貫穿機械鑽孔 (PTH)', note: '鑽穿已壓合的 M+N 雙子板形成跨板共通導通孔', param: '貫穿 M+N 機械通孔' },
+    { type: 'desmear', title: '【M+N 合板】電漿除膠渣 (Plasma)', note: '清潔貫穿 PTFE (M板) 與 FR4 (N板) 的異質孔壁殘膠', param: 'CF4/O2 電漿除膠渣' },
+    { type: 'pth_seed', title: '【M+N 合板】全板化學銅導通', note: '於貫穿 M+N 的通孔壁沉積導電種子銅', param: '高附著 PTH 化學銅' },
+    { type: 'panel_plate', title: '【M+N 合板】全板電鍍加厚', note: '加厚貫穿通孔孔壁銅並導通上下子板外層', param: '全板電鍍 Cu ≥25μm' },
+    { type: 'outer_dfr', title: '【M+N 合板】外層乾膜壓膜與曝光', note: '保護 M+N 合板上下外層線路與導通孔環', param: 'LDI 外層對位曝光' },
+    { type: 'outer_etch', title: '【M+N 合板】外層蝕刻與防焊化金', note: '蝕刻完成 M+N 複合板外層線路', param: '外層精密蝕刻' },
+    { type: 'solder_mask', title: '【M+N 合板】防焊綠漆與表面處理', note: '完成 M+N 異質複合板防焊開窗與化金', param: 'LPI 防焊 + ENIG' }
+  ],
+  'embedded': [
+    { type: 'substrate_cut', title: '核心承載基板開料與內層線路', note: '準備內埋元件承載核心板並完成內層線路', param: 'Core 基板 + 內層銅墊' },
+    { type: 'inner_etch', title: '內層線路蝕刻與棕化', note: '形成內層走線與內埋空間對位基準點 (Fiducial)', param: '內層 DES + 棕化' },
+    { type: 'cavity_embed', title: '基板挖槽與內埋晶片/被動元件貼裝 (Cavity & Die Attach)', note: '雷射/成型開出 Cavity 凹槽，貼裝含銅柱電極 (Cu Pillar) 之裸晶或 MLCC', param: 'Die Attach (Cu Pillar 朝上)' },
+    { type: 'lamination', title: '內埋封裝真空壓合 (Encapsulation Lamination)', note: '疊合高流膠半固化片/樹脂膜填滿元件四周間隙並壓合外層銅箔', param: '真空無空洞樹脂封裝壓合' },
+    { type: 'laser_drill', title: '雷射鑽孔直達晶片電極與內層墊 (Laser to Die Pad)', note: 'UV/CO2 雷射同步鑽出連接內層銅墊與內埋晶片電極 (Cu Pillar) 的微盲孔', param: 'Laser Via 對準晶片電極 ±10μm' },
+    { type: 'desmear', title: '電漿清潔晶片電極表面 (Plasma Clean)', note: '溫和清除雷射盲孔底部與晶片銅柱電極表面殘膠', param: 'O2/Ar 精密電漿清潔' },
+    { type: 'pth_seed', title: '無電鍍銅 / 濺鍍種子層 (Seed Layer)', note: '於盲孔壁與晶片電極頂部形成導電種子層', param: 'Sputter Ti/Cu 或 PTH 化學銅' },
+    { type: 'panel_plate', title: '盲孔實心填銅電鍍 (Via Fill to Die)', note: '將連接晶片電極與內層銅墊的微盲孔完全填滿實心銅，達成零焊線互連', param: '晶片電極盲孔實心填銅' },
+    { type: 'outer_dfr', title: '外層乾膜壓膜與曝光', note: '高精度 LDI 曝光定義外層重佈線層 (RDL) 線路', param: 'LDI 高精度對位曝光' },
+    { type: 'outer_etch', title: '外層蝕刻與防焊開窗', note: '完成內埋元件封裝基板外層線路', param: '精密蝕刻 + 防焊 ENIG' }
+  ],
+  'msap': [
+    { type: 'substrate_cut', title: '載板/核心層開料與內層蝕刻', note: '準備高階載板核心層並完成內層目標銅墊', param: 'Ultra-thin Core + 內層線路' },
+    { type: 'inner_etch', title: '內層目標墊成型與超粗化', note: '形成細間距內層線路與雷射承接墊', param: '內層線路成型' },
+    { type: 'rcc_buildup', title: '壓合 ABF 增層膜 / 超薄銅載體 (1~3μm Seed)', note: '壓合低粗糙度 ABF 絕緣增層膜（表面僅極薄 1~2μm 種子銅或無銅）', param: 'ABF Film + 2μm 超薄銅' },
+    { type: 'laser_drill', title: 'CO2/UV 雷射微盲孔加工', note: '加工小孔徑高密度微盲孔 (μVia Ø45~60μm)', param: 'μVia Ø50μm 雷射盲孔' },
+    { type: 'desmear', title: '電漿除膠渣與超低粗糙度表面處理', note: '清除盲孔殘膠並維持 ABF 表面低粗糙度以利細線距閃蝕', param: 'Plasma + 低粗糙度活化' },
+    { type: 'pth_seed', title: '薄化學銅 / 濺鍍種子銅 (Thin Seed Cu)', note: '全板與盲孔內壁沉積 1~2μm 極薄均勻導電種子銅層 (Seed Layer)', param: '極薄化學銅 Seed 1.5μm' },
+    { type: 'outer_dfr', title: 'mSAP 高解析度乾膜曝光 (線路區開槽)', note: '貼覆高深寬比垂直側壁乾膜，將「線路與盲孔區開槽露出種子銅」', param: 'LDI 解析度 L/S 12/12μm' },
+    { type: 'sap_pattern_plate', title: 'SAP/mSAP 圖形電鍍填孔與退乾膜 (Pattern Plate & Strip)', note: '僅在乾膜開槽內電鍍長出矩形垂直銅線與填滿盲孔，隨後剝除乾膜（線間仍留薄種子銅）', param: '圖形電鍍銅高 15μm + 退膜' },
+    { type: 'sap_flash_etch', title: 'SAP/mSAP 閃蝕移除底部種子銅 (Flash Etch)', note: '快速微蝕咬除線間裸露的 1.5μm 種子銅，保留完整垂直側壁細線路（無側蝕梯形失真）', param: '微分閃蝕去 Seed Cu (零側蝕)' },
+    { type: 'solder_mask', title: '防焊開窗與表面處理 (Solder Mask & ENEPIG)', note: '完成高密度微細線路防焊與化鎳鈀浸金表面處理', param: 'LDI 防焊 + ENEPIG' }
+  ]
+};
+
+/* ============================================================================
+   3. STATE & STORAGE MANAGEMENT
+   ============================================================================ */
+let appState = {
+  steps: [],
+  activeStepIndex: 0,
+  viewMode: 'dual', // 'dual' | 'storyboard'
+  selectedCategory: 'all',
+  lightTheme: false,
+  autoPlayTimer: null
+};
+
+function uid() {
+  return 's_' + Math.random().toString(36).slice(2, 9);
+}
+
+function initApp() {
+  renderPaletteTabs();
+  renderPaletteItems();
+
+  // Try loading from localStorage
+  const saved = localStorage.getItem('pcb_process_studio_v1');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed.steps) && parsed.steps.length > 0) {
+        appState.steps = parsed.steps;
+        appState.activeStepIndex = Math.min(parsed.activeStepIndex || 0, appState.steps.length - 1);
+        renderAll();
+        return;
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+  // Default template: 4-Layer or HDI
+  loadTemplate('hdi', false);
+
+  // Keyboard navigation
+  window.addEventListener('keydown', (e) => {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      stepNext();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      stepPrev();
+    }
+  });
+}
+
+function saveState() {
+  localStorage.setItem('pcb_process_studio_v1', JSON.stringify({
+    steps: appState.steps,
+    activeStepIndex: appState.activeStepIndex
+  }));
+}
+
+function loadTemplate(key, showNotice = true) {
+  const list = TEMPLATES[key];
+  if (!list) return;
+  appState.steps = list.map(item => ({
+    id: uid(),
+    type: item.type,
+    title: item.title,
+    note: item.note,
+    param: item.param
+  }));
+  appState.activeStepIndex = appState.steps.length - 1; // Show final completed structure first or step 0? Let's show last step or step 0
+  // Showing the last step or middle step immediately shows rich cross-section! Let's select last step so user immediately sees all layers, or step-by-step
+  appState.activeStepIndex = appState.steps.length - 1;
+  saveState();
+  renderAll();
+  if (showNotice) showToast('已套用範本，可點擊任一站檢視或拖拉改序！');
+}
+
+function clearAllSteps() {
+  appState.steps = [{
+    id: uid(),
+    type: 'substrate_cut',
+    title: STEP_LIBRARY.substrate_cut.defaultTitle,
+    note: STEP_LIBRARY.substrate_cut.defaultNote,
+    param: STEP_LIBRARY.substrate_cut.defaultParam
+  }];
+  appState.activeStepIndex = 0;
+  saveState();
+  renderAll();
+}
+
+function addStepFromPalette(type, subMode = null) {
+  const def = STEP_LIBRARY[type];
+  if (!def) return;
+  const isXVia = (type === 'laser_drill' && subMode === 'xvia');
+  const isSelectivePlug = (type === 'resin_plug' && subMode === 'selective');
+  const newStep = {
+    id: uid(),
+    type: def.type,
+    laserMode: isXVia ? 'xvia' : (type === 'laser_drill' ? 'single' : undefined),
+    plugMode: isSelectivePlug ? 'selective' : (type === 'resin_plug' ? 'all' : undefined),
+    title: isXVia
+      ? '雷射雙面對鑽 (Core X-Via)'
+      : (isSelectivePlug ? '選擇性樹脂塞孔 (遮住部分孔+塞孔)' : def.defaultTitle),
+    note: isXVia
+      ? 'CO2 / UV 雷射上下雙面對鑽貫穿 Core 核心層，於中間交會形成對稱沙漏型 X-Via'
+      : (isSelectivePlug ? '以鋁片/網版遮住不需塞孔的導通孔，僅對指定導通孔進行真空樹脂塞孔與烘烤' : def.defaultNote),
+    param: isXVia
+      ? 'X-Via Ø75μm 雙錐對鑽孔'
+      : (isSelectivePlug ? '選擇性遮蔽挡網 + 真空樹脂塞孔' : def.defaultParam)
+  };
+  // Insert right after activeStepIndex
+  const insertAt = appState.steps.length > 0 ? appState.activeStepIndex + 1 : 0;
+  appState.steps.splice(insertAt, 0, newStep);
+  appState.activeStepIndex = insertAt;
+  saveState();
+  renderAll();
+  scrollToActiveStepInSidebar();
+}
+
+function updateLaserMode(idx, mode) {
+  const step = appState.steps[idx];
+  if (!step) return;
+  step.laserMode = mode;
+  if (mode === 'xvia') {
+    if (step.title === STEP_LIBRARY.laser_drill.defaultTitle || step.title.includes('Laser Blind Via')) {
+      step.title = '雷射雙面對鑽 (Core X-Via)';
+    }
+    if (step.param === STEP_LIBRARY.laser_drill.defaultParam || step.param.includes('錐形盲孔')) {
+      step.param = 'X-Via Ø75μm 雙錐對鑽孔';
+    }
+    if (step.note === STEP_LIBRARY.laser_drill.defaultNote || step.note.includes('外層介電質')) {
+      step.note = 'CO2 / UV 雷射上下雙面對鑽貫穿 Core 核心層，於中間交會形成對稱沙漏型 X-Via';
+    }
+  } else {
+    if (step.title === '雷射雙面對鑽 (Core X-Via)') {
+      step.title = STEP_LIBRARY.laser_drill.defaultTitle;
+    }
+    if (step.param === 'X-Via Ø75μm 雙錐對鑽孔') {
+      step.param = STEP_LIBRARY.laser_drill.defaultParam;
+    }
+    if (step.note.includes('上下雙面對鑽')) {
+      step.note = STEP_LIBRARY.laser_drill.defaultNote;
+    }
+  }
+  saveState();
+  renderAll();
+}
+
+function updatePlugMode(idx, mode) {
+  const step = appState.steps[idx];
+  if (!step) return;
+  step.plugMode = mode;
+  if (mode === 'selective') {
+    step.title = '選擇性樹脂塞孔 (遮住部分孔+塞孔)';
+    step.param = '選擇性遮蔽擋網 + 真空樹脂塞孔';
+    step.note = '以鋁片/網版遮住不需塞孔的導通孔，僅對指定導通孔進行真空樹脂塞孔與烘烤';
+  } else if (mode === 'mask_only') {
+    step.title = '選擇性塞孔遮蔽 (遮住部分的孔)';
+    step.param = '貼覆遮蔽擋網 / 乾膜蓋住不塞孔PTH';
+    step.note = '於塞孔前先將不需塞孔的導通孔上下遮住保護，僅露出待塞孔導通孔';
+  } else {
+    step.title = STEP_LIBRARY.resin_plug.defaultTitle;
+    step.param = STEP_LIBRARY.resin_plug.defaultParam;
+    step.note = STEP_LIBRARY.resin_plug.defaultNote;
+  }
+  saveState();
+  renderAll();
+}
+
+function deleteStep(idx, ev) {
+  ev.stopPropagation();
+  if (appState.steps.length <= 1) {
+    showToast('至少需保留一個製程步驟');
+    return;
+  }
+  appState.steps.splice(idx, 1);
+  if (appState.activeStepIndex >= appState.steps.length) {
+    appState.activeStepIndex = appState.steps.length - 1;
+  }
+  saveState();
+  renderAll();
+}
+
+function moveStep(idx, dir, ev) {
+  ev.stopPropagation();
+  const target = idx + dir;
+  if (target < 0 || target >= appState.steps.length) return;
+  const temp = appState.steps[idx];
+  appState.steps[idx] = appState.steps[target];
+  appState.steps[target] = temp;
+  appState.activeStepIndex = target;
+  saveState();
+  renderAll();
+}
+
+function updateStepField(idx, field, value) {
+  if (!appState.steps[idx]) return;
+  appState.steps[idx][field] = value;
+  if (field === 'type') {
+    const def = STEP_LIBRARY[value];
+    if (def) {
+      appState.steps[idx].title = def.defaultTitle;
+      appState.steps[idx].note = def.defaultNote;
+      appState.steps[idx].param = def.defaultParam;
+      if (value === 'laser_drill' && !appState.steps[idx].laserMode) {
+        appState.steps[idx].laserMode = 'single';
+      }
+      renderAll();
+      return;
+    }
+  }
+  saveState();
+  // Re-render canvases without losing input focus
+  renderCanvasesOnly();
+  // Also update header text in step card
+  const titleEl = document.getElementById(`step-title-display-${idx}`);
+  const noteEl = document.getElementById(`step-note-display-${idx}`);
+  if (titleEl) titleEl.textContent = appState.steps[idx].title;
+  if (noteEl) noteEl.textContent = `${appState.steps[idx].param} — ${appState.steps[idx].note}`;
+}
+
+/* ============================================================================
+   4. PARAMETRIC PCB CROSS-SECTION PHYSICAL STATE ENGINE (核心橫切面狀態推演引擎)
+   ============================================================================ */
+/**
+ * Given the sequence of steps up to `targetIndex`, computes the exact physical
+ * state of the PCB cross-section at each step so any user-arranged order produces
+ * a realistic, physically coherent cross-section evolution diagram.
+ */
+function createDefaultBoardState(mnPhase = null) {
+  return {
+    hasCore: false,
+    coreMaterial: 'FR4 Core',
+    isPtfe: false,
+    innerDfr: false,
+    innerEtched: false,
+    hasOxide: false,
+    isMultilayer: false,      // True after lamination or rcc_buildup
+    buildupCount: 0,          // 0 = 2L Core, 1 = 4L (1st buildup), 2+ = Multi-buildup (6L+)
+    buriedBuildup: null,      // Preserves 1st buildup layer state when 2nd lamination is performed
+    buriedHole: null,         // Preserves buried through-hole / VIPPO resin-plugged hole when laminated over
+    buriedCoreLaserVia: null, // Preserves Core laser via (single-sided or X-Via) when 2L Core is laminated over
+    innerIsSap: false,        // True if 2L Core was patterned with mSAP before 1st lamination
+    hasBuriedCoreVia: false,  // True if 2L Core had a through-hole before 1st lamination
+    outerOxide: false,        // True when oxide roughening is applied to current outer copper surface
+    buildupType: 'PP',        // 'PP' | 'RCC'
+    hasThroughHole: false,    // True after 1st mech_drill
+    pthHasSeed: false,        // True ONLY when pth_seed is performed AFTER 1st mech_drill!
+    pthHasPlated: false,      // True ONLY when panel_plate is performed AFTER 1st mech_drill!
+    hasSecondHole: false,     // True when a 2nd mech_drill is performed (e.g. after resin plug or after 1st PTH)!
+    pth2HasSeed: false,       // True ONLY when pth_seed is performed AFTER 2nd mech_drill!
+    pth2HasPlated: false,     // True ONLY when panel_plate is performed AFTER 2nd mech_drill!
+    hasLaserVia: false,       // True after laser_drill
+    laserViaMode: 'single',   // 'single' (單面錐形孔) | 'xvia' (雙面對鑽沙漏孔 X-Via)
+    laserViaHasSeed: false,   // True ONLY when pth_seed is performed AFTER laser_drill!
+    laserViaHasPlated: false, // True ONLY when panel_plate is performed AFTER laser_drill!
+    viaFilled: false,         // True if panel_plate fills laser via
+    isDesmeared: false,       // True after desmear
+    hasSeedCu: false,         // Surface seed copper
+    hasPlatedCu: false,       // Surface plated copper
+    hasResinPlug: false,      // True after resin_plug
+    plugMode: 'all',          // 'all' | 'selective' | 'mask_only'
+    hasSelectiveMask: false,  // True when selective masking shield covers Hole 2 during mask_only / selective resin_plug
+    selectivePlugFlow: false, // True when Hole 1 and Hole 2 were drilled & plated together for selective plugging
+    simultaneousDualDrill: false, // True when mech_drill drills both Hole 1 and Hole 2 in the same operation
+    resinProtruding: false,   // True after resin_plug before planar_grind
+    isPlanarized: false,      // True after planar_grind
+    hasCapPlate: false,       // True if panel_plate is run AFTER resin_plug + planar_grind (VIPPO Cap Plating)
+    outerDfr: false,
+    outerEtched: false,
+    isMultiCore: false,       // True after multicore_lam (Core 1 + Core 2 stackup)
+    isMNSubBoard: false,      // True after mn_sub_lam (M+N Sub-board bonding)
+    mnPhase: mnPhase,         // null | 'M' | 'N' | 'MN_BONDED'
+    savedSubBoardM: null,     // Snapshot of completed Sub-Board M while building Sub-Board N
+    subBoardM: null,          // Snapshot of Sub-Board M inside bonded M+N board
+    subBoardN: null,          // Snapshot of Sub-Board N inside bonded M+N board
+    topPreEtched: false,      // True if Sub-Board M's top surface was etched prior to M+N bonding
+    botPreEtched: false,      // True if Sub-Board N's bottom surface was etched prior to M+N bonding
+    postBondPlated: false,    // True if PTH/panel plating is performed after M+N bonding
+    hasBuriedSubVia: false,   // True if drilled/plated before mn_sub_lam or multicore_lam
+    hasEmbeddedComp: false,   // True after cavity_embed (Embedded Die / MLCC in cavity)
+    isEmbeddedEncapsulated: false, // True after lamination over embedded component
+    isSapMode: false,         // True when using SAP/mSAP thin seed or pattern plating
+    sapPatternPlated: false,  // True after sap_pattern_plate (thick vertical traces on thin seed)
+    sapSeedStripped: false,   // True after sap_flash_etch (thin seed removed between traces)
+    hasSolderMask: false,
+    maskColor: '#059669',
+    hasSurfaceFinish: false,
+    finishType: 'ENIG',
+    hasSilkscreen: false,
+    activeAction: 'init',
+    activeHoleTarget: 1       // 1 = 1st through hole, 2 = 2nd through hole
+  };
+}
+
+function getStepPlugMode(step) {
+  if (!step || step.type !== 'resin_plug') return 'all';
+  if (step.plugMode === 'selective' || step.plugMode === 'mask_only') return step.plugMode;
+  const tc = `${step.title || ''} ${step.param || ''} ${step.note || ''}`.toLowerCase();
+  if ((tc.includes('僅遮') || tc.includes('先遮') || tc.includes('遮住部分')) && !tc.includes('樹脂塞孔') && !tc.includes('+塞孔') && !tc.includes('＋塞孔')) {
+    return 'mask_only';
+  }
+  if (tc.includes('選擇性') || tc.includes('遮') || tc.includes('selective') || tc.includes('擋網') || tc.includes('鋁片')) {
+    return 'selective';
+  }
+  return 'all';
+}
+
+function simulateCrossSectionStates(steps) {
+  const hasMNFlow = steps.some(s => s.type === 'subboard_start_n' || s.type === 'mn_sub_lam');
+  let state = createDefaultBoardState(hasMNFlow ? 'M' : null);
+
+  const snapshots = [];
+
+  steps.forEach((step, idx) => {
+    // Clone previous state
+    state = JSON.parse(JSON.stringify(state));
+    state.activeAction = step.type;
+    state.stepIndex = idx;
+    state.stepTitle = step.title;
+    state.stepParam = step.param;
+    state.stepNote = step.note;
+
+    const textCombined = `${step.title} ${step.param} ${step.note}`.toLowerCase();
+
+    switch (step.type) {
+      case 'substrate_cut':
+        state.hasCore = true;
+        if (textCombined.includes('ptfe') || textCombined.includes('氟') || textCombined.includes('無玻纖')) {
+          state.isPtfe = true;
+          state.coreMaterial = 'PTFE 無玻纖高頻基材';
+        } else {
+          state.isPtfe = false;
+          state.coreMaterial = 'FR4 玻纖環氧基板';
+        }
+        break;
+
+      case 'subboard_start_n': {
+        // Snapshot the completed Sub-Board M and reset working state to build Sub-Board N independently!
+        const completedSubM = JSON.parse(JSON.stringify(state));
+        delete completedSubM.savedSubBoardM;
+        state = createDefaultBoardState('N');
+        state.hasCore = true;
+        state.savedSubBoardM = completedSubM;
+        state.activeAction = step.type;
+        state.stepIndex = idx;
+        state.stepTitle = step.title;
+        state.stepParam = step.param;
+        state.stepNote = step.note;
+        if (textCombined.includes('ptfe') || textCombined.includes('氟') || textCombined.includes('無玻纖')) {
+          state.isPtfe = true;
+          state.coreMaterial = 'PTFE 無玻纖高頻基材';
+        } else {
+          state.isPtfe = false;
+          state.coreMaterial = 'FR4 玻纖環氧基板';
+        }
+        break;
+      }
+
+      case 'inner_dfr':
+        state.hasCore = true;
+        state.innerDfr = true;
+        state.outerDfr = true; // Works on current exposed surface whether 2L Core, Multi-Core, or Sub-Composite!
+        break;
+
+      case 'inner_etch':
+        state.hasCore = true;
+        state.innerDfr = false;
+        state.outerDfr = false;
+        state.innerEtched = true;
+        state.outerEtched = true; // Etches current exposed surface whether 2L Core, Multi-Core, or Sub-Composite!
+        break;
+
+      case 'oxide':
+        state.hasCore = true;
+        state.hasOxide = true;
+        state.outerOxide = true;
+        break;
+
+      case 'lamination':
+      case 'rcc_buildup': {
+        const isRccStep = (step.type === 'rcc_buildup');
+        const nextIsSap = isRccStep && (textCombined.includes('abf') || textCombined.includes('msap') || textCombined.includes('sap') || textCombined.includes('超薄'));
+        state.hasCore = true;
+        state.innerDfr = false;
+
+        // Archive any existing through-hole / resin-plugged VIPPO hole as an internal buried hole before laminating new outer layers!
+        if (state.hasThroughHole) {
+          state.buriedHole = {
+            level: state.buildupCount || 0,
+            hasSeed: state.pthHasSeed,
+            hasPlated: state.pthHasPlated,
+            hasResinPlug: state.hasResinPlug,
+            isPlanarized: state.isPlanarized,
+            hasCapPlate: state.hasCapPlate
+          };
+          state.hasBuriedCoreVia = true;
+          state.hasThroughHole = false;
+          state.pthHasSeed = false;
+          state.pthHasPlated = false;
+          state.hasSecondHole = false;
+          state.pth2HasSeed = false;
+          state.pth2HasPlated = false;
+          state.hasResinPlug = false;
+          state.hasSelectiveMask = false;
+          state.selectivePlugFlow = false;
+          state.simultaneousDualDrill = false;
+          state.resinProtruding = false;
+          state.hasCapPlate = false;
+        }
+
+        if ((state.buildupCount || 0) === 0) {
+          // 1st Buildup Lamination (2L Core or 4L Multi-Core -> +2 Buildup Layers)
+          if (state.hasLaserVia) {
+            state.buriedCoreLaserVia = {
+              mode: state.laserViaMode || 'single',
+              hasSeed: state.laserViaHasSeed,
+              hasPlated: state.laserViaHasPlated,
+              viaFilled: state.viaFilled
+            };
+          }
+          if (state.outerEtched || state.sapPatternPlated) {
+            state.innerEtched = true;
+            state.innerIsSap = Boolean(state.isSapMode && state.sapPatternPlated);
+          } else {
+            state.innerEtched = true;
+          }
+          state.buildupCount = 1;
+        } else {
+          // 2nd+ Sequential Buildup Lamination (Archive previous outer buildup layer as an inner buried buildup layer!)
+          state.buriedBuildup = {
+            buildupType: state.buildupType,
+            isSapMode: state.isSapMode,
+            hasLaserVia: state.hasLaserVia,
+            laserViaMode: state.laserViaMode || 'single',
+            laserViaHasSeed: state.laserViaHasSeed,
+            laserViaHasPlated: state.laserViaHasPlated,
+            viaFilled: state.viaFilled,
+            etched: Boolean(state.outerEtched || state.sapPatternPlated)
+          };
+          state.buildupCount = (state.buildupCount || 1) + 1;
+        }
+
+        state.isMultilayer = true;
+        state.buildupType = isRccStep ? 'RCC' : 'PP';
+        state.isSapMode = nextIsSap;
+        if (state.hasEmbeddedComp) {
+          state.isEmbeddedEncapsulated = true;
+        }
+
+        // Reset outer surface working flags so the newly laminated outer layer starts with a fresh continuous copper foil!
+        state.topPreEtched = false;
+        state.botPreEtched = false;
+        state.outerDfr = false;
+        state.outerEtched = false;
+        state.outerOxide = false;
+        state.sapPatternPlated = false;
+        state.sapSeedStripped = false;
+        state.hasSeedCu = false;
+        state.hasPlatedCu = false;
+        state.hasLaserVia = false;
+        state.laserViaMode = 'single';
+        state.laserViaHasSeed = false;
+        state.laserViaHasPlated = false;
+        state.viaFilled = false;
+        state.hasSolderMask = false;
+        state.hasSurfaceFinish = false;
+        state.hasSilkscreen = false;
+        break;
+      }
+
+      case 'multicore_lam':
+        state.hasCore = true;
+        state.isMultiCore = true;
+        // Core 1 + Central Bonding PP + Core 2: internal faces are etched pads, outer faces of Core 1 & Core 2 start as continuous copper foil!
+        state.innerDfr = false;
+        state.outerDfr = false;
+        state.innerEtched = true;
+        state.outerEtched = false;
+        state.outerOxide = false;
+        state.hasSeedCu = false;
+        state.hasPlatedCu = false;
+        if (state.hasThroughHole && (state.pthHasSeed || state.pthHasPlated)) {
+          state.hasBuriedSubVia = true;
+          state.hasThroughHole = false;
+          state.pthHasSeed = false;
+          state.pthHasPlated = false;
+          state.hasResinPlug = false;
+          state.resinProtruding = false;
+          state.hasCapPlate = false;
+        }
+        break;
+
+      case 'mn_sub_lam': {
+        // Bond Completed Sub-Board M (top) + Central Bonding PP + Completed Sub-Board N (bottom)!
+        const subN = JSON.parse(JSON.stringify(state));
+        delete subN.savedSubBoardM;
+        const subM = state.savedSubBoardM
+          ? JSON.parse(JSON.stringify(state.savedSubBoardM))
+          : JSON.parse(JSON.stringify(subN));
+
+        state = createDefaultBoardState('MN_BONDED');
+        state.hasCore = true;
+        state.isMultiCore = true;
+        state.isMNSubBoard = true;
+        state.subBoardM = subM;
+        state.subBoardN = subN;
+        state.innerEtched = true;
+        // Preserve whether the outer top surface of Sub-Board M or bottom surface of Sub-Board N was already etched before bonding!
+        state.topPreEtched = Boolean(subM.outerEtched || subM.sapPatternPlated);
+        state.botPreEtched = Boolean(subN.outerEtched || subN.sapPatternPlated);
+        state.postBondPlated = false;
+        state.hasBuriedSubVia = Boolean(subM.hasThroughHole || subM.buriedHole || subN.hasThroughHole || subN.buriedHole);
+        state.activeAction = step.type;
+        state.stepIndex = idx;
+        state.stepTitle = step.title;
+        state.stepParam = step.param;
+        state.stepNote = step.note;
+        break;
+      }
+
+      case 'cavity_embed':
+        state.hasCore = true;
+        state.innerEtched = true;
+        state.hasEmbeddedComp = true;
+        break;
+
+      case 'mech_drill': {
+        state.hasCore = true;
+        // Check if a downstream resin_plug step uses Selective Plugging (鑽孔 -> 電鍍 -> 遮住部分的孔 -> 塞孔 -> 刷磨)
+        let hasDownstreamSelectivePlug = false;
+        for (let j = idx + 1; j < steps.length; j++) {
+          const st = steps[j].type;
+          if (['mech_drill', 'lamination', 'rcc_buildup', 'subboard_start_n', 'mn_sub_lam', 'multicore_lam'].includes(st)) break;
+          if (st === 'resin_plug' && getStepPlugMode(steps[j]) !== 'all') {
+            hasDownstreamSelectivePlug = true;
+            break;
+          }
+        }
+        if (!state.hasThroughHole && !state.buriedHole) {
+          // 1st Mechanical Drill (at center x = 300)
+          state.hasThroughHole = true;
+          state.pthHasSeed = false;
+          state.pthHasPlated = false;
+          state.hasResinPlug = false;
+          state.resinProtruding = false;
+          state.hasCapPlate = false;
+          state.activeHoleTarget = 1;
+          if (hasDownstreamSelectivePlug) {
+            // In Selective Plugging flow, both the hole-to-plug (x=300) and the hole-to-keep-open (x=424) are drilled together!
+            state.hasSecondHole = true;
+            state.pth2HasSeed = false;
+            state.pth2HasPlated = false;
+            state.simultaneousDualDrill = true;
+            state.selectivePlugFlow = true;
+          } else {
+            state.simultaneousDualDrill = false;
+          }
+        } else {
+          // 2nd Mechanical Drill (at right x = 424, preserving either 1st plugged/plated PTH OR buried hole at x = 300!)
+          state.hasSecondHole = true;
+          state.pth2HasSeed = false;
+          state.pth2HasPlated = false;
+          state.activeHoleTarget = 2;
+          state.simultaneousDualDrill = false;
+          state.selectivePlugFlow = false;
+        }
+        state.isDesmeared = false;
+        break;
+      }
+
+      case 'laser_drill': {
+        state.hasCore = true;
+        // Note: Do NOT force state.isMultilayer = true! A 2L Core can be laser-drilled directly (Single-Sided Tapered Via or Double-Sided X-Via)!
+        state.hasLaserVia = true;
+        const isXVia = step.laserMode === 'xvia' ||
+          textCombined.includes('x-via') ||
+          textCombined.includes('xvia') ||
+          textCombined.includes('x_via') ||
+          textCombined.includes('雙面') ||
+          textCombined.includes('對鑽') ||
+          textCombined.includes('沙漏');
+        state.laserViaMode = isXVia ? 'xvia' : 'single';
+        // Freshly laser-drilled via has NO copper until electroless Cu (pth_seed) is run!
+        state.laserViaHasSeed = false;
+        state.laserViaHasPlated = false;
+        state.viaFilled = false;
+        state.isDesmeared = false;
+        break;
+      }
+
+      case 'desmear':
+        state.hasCore = true;
+        state.isDesmeared = true;
+        break;
+
+      case 'pth_seed':
+        state.hasCore = true;
+        state.hasSeedCu = true;
+        if (state.isMNSubBoard) state.postBondPlated = true;
+        if (state.hasThroughHole) state.pthHasSeed = true;
+        if (state.hasSecondHole) state.pth2HasSeed = true;
+        if (state.hasLaserVia) state.laserViaHasSeed = true;
+        break;
+
+      case 'panel_plate':
+        state.hasCore = true;
+        state.hasSeedCu = true;
+        state.hasPlatedCu = true;
+        state.hasSelectiveMask = false;
+        if (state.isMNSubBoard) state.postBondPlated = true;
+        if (state.hasThroughHole) {
+          state.pthHasSeed = true;
+          state.pthHasPlated = true;
+        }
+        if (state.hasSecondHole) {
+          state.pth2HasSeed = true;
+          state.pth2HasPlated = true;
+        }
+        if (state.hasLaserVia) {
+          state.laserViaHasSeed = true;
+          state.laserViaHasPlated = true;
+          if (textCombined.includes('填') || textCombined.includes('fill') || state.hasLaserVia) {
+            state.viaFilled = true;
+          }
+        }
+        if (state.hasResinPlug && !state.resinProtruding) {
+          // If plated after resin plugging & planarization -> VIPPO Cap Plating over the resin plug!
+          state.hasCapPlate = true;
+        }
+        break;
+
+      case 'resin_plug': {
+        state.hasCore = true;
+        state.hasThroughHole = true;
+        const pMode = getStepPlugMode(step);
+        state.plugMode = pMode;
+        if (pMode === 'selective' || pMode === 'mask_only' || state.hasSelectiveMask) {
+          if (!state.hasSecondHole) {
+            state.hasSecondHole = true;
+            state.pth2HasSeed = Boolean(state.pthHasSeed || state.hasSeedCu);
+            state.pth2HasPlated = Boolean(state.pthHasPlated || state.hasPlatedCu);
+          }
+          state.selectivePlugFlow = true;
+          state.hasSelectiveMask = true;
+        } else {
+          state.hasSelectiveMask = false;
+        }
+        if (pMode === 'mask_only') {
+          // Only masks Hole 2 first; Hole 1 is not filled with resin until the next resin_plug step!
+          state.hasResinPlug = false;
+          state.resinProtruding = false;
+          state.isPlanarized = false;
+        } else {
+          state.hasResinPlug = true;
+          state.resinProtruding = true;
+          state.isPlanarized = false;
+        }
+        state.activeHoleTarget = 1;
+        break;
+      }
+
+      case 'planar_grind':
+        state.hasCore = true;
+        state.hasSelectiveMask = false;
+        state.resinProtruding = false;
+        state.isPlanarized = true;
+        break;
+
+      case 'outer_dfr':
+        state.hasCore = true;
+        state.hasSelectiveMask = false;
+        state.outerDfr = true;
+        if (textCombined.includes('msap') || textCombined.includes('sap') || textCombined.includes('開槽')) {
+          state.isSapMode = true;
+        }
+        break;
+
+      case 'outer_etch':
+        state.hasCore = true;
+        state.outerDfr = false;
+        state.outerEtched = true;
+        break;
+
+      case 'sap_pattern_plate':
+        state.hasCore = true;
+        state.isSapMode = true;
+        state.hasSeedCu = true;
+        state.outerDfr = false; // DFR stripped after pattern plating (or shown with trenches)
+        state.sapPatternPlated = true;
+        state.sapSeedStripped = false;
+        if (state.hasLaserVia) {
+          state.laserViaHasSeed = true;
+          state.laserViaHasPlated = true;
+          state.viaFilled = true;
+        }
+        if (state.hasThroughHole) {
+          state.pthHasSeed = true;
+          state.pthHasPlated = true;
+        }
+        break;
+
+      case 'sap_flash_etch':
+        state.hasCore = true;
+        state.isSapMode = true;
+        state.sapPatternPlated = true;
+        state.sapSeedStripped = true;
+        state.outerEtched = true;
+        break;
+
+      case 'solder_mask':
+        state.hasCore = true;
+        state.outerDfr = false;
+        state.hasSolderMask = true;
+        if (textCombined.includes('黑') || textCombined.includes('black')) state.maskColor = '#1e293b';
+        else if (textCombined.includes('藍') || textCombined.includes('blue')) state.maskColor = '#0284c7';
+        else if (textCombined.includes('紅') || textCombined.includes('red')) state.maskColor = '#dc2626';
+        else state.maskColor = '#059669';
+        break;
+
+      case 'surface_finish':
+        state.hasCore = true;
+        state.hasSurfaceFinish = true;
+        break;
+
+      case 'silkscreen':
+        state.hasCore = true;
+        state.hasSilkscreen = true;
+        break;
+
+      default:
+        state.hasCore = true;
+        break;
+    }
+
+    snapshots.push(state);
+  });
+
+  return snapshots;
+}
+
+/* ============================================================================
+   5. SVG CROSS-SECTION RENDERER (PCB 橫切面向量繪圖器)
+   ============================================================================ */
+/**
+ * Renders a single cross-section card SVG group at (offsetX, offsetY) with width W, height H.
+ */
+function buildCrossSectionGroupSVG(snap, offsetX, offsetY, W, H, options = {}) {
+  const isLight = appState.lightTheme;
+  const bgCard = isLight ? '#f8fafc' : '#111827';
+  const strokeCard = options.isActive ? '#0ea5e9' : (isLight ? '#cbd5e1' : '#334155');
+  const textMain = isLight ? '#0f172a' : '#f8fafc';
+  const textSub = isLight ? '#475569' : '#94a3b8';
+
+  const def = STEP_LIBRARY[snap.activeAction] || STEP_LIBRARY.custom_step;
+
+  // Coordinate space inside the drawing box (normalized 520 x 260)
+  const vbW = 520;
+  const vbH = 260;
+  const cy = 142; // Vertical center of the PCB core
+
+  // Dimensions of layers
+  const boardLeft = 40;
+  const boardRight = 480;
+  const boardW = boardRight - boardLeft; // 440
+
+  const isMultiBuildup = (snap.buildupCount || 0) >= 2;
+  const coreHalfH = isMultiBuildup ? 19 : ((snap.isMNSubBoard && !snap.isMultilayer) ? 42 : 28);
+  const innerCuH = isMultiBuildup ? 6.5 : 9;
+  const b1H = 25;   // 1st buried buildup dielectric thickness when buildupCount >= 2
+  const b1CuH = 7;  // 1st buried buildup copper trace thickness when buildupCount >= 2
+  const ppH = isMultiBuildup ? 27 : 32;
+  const outerCuH = 9;
+  const platedCuH = 6;
+  const dfrH = 11;
+  const maskH = 10;
+
+  // Key X positions for features:
+  // 1) Left signal trace region: x = 58..108
+  // 2) Laser Blind Via region (top & bottom): x center = 178 (top width 46, bottom width 26)
+  // 3) 1st Mechanical Through-Hole (VIPPO / Plugged PTH): x center = 300 (hole x = 278..322, pad x = 254..346)
+  // 4) 2nd Mechanical Through-Hole (Open PTH / 2nd Drill) OR Right signal trace: x center = 424 (hole x = 402..446, pad x = 378..468)
+
+  const holeL = 278;
+  const holeR = 322;
+  const holeCx = 300;
+
+  const hole2L = 402;
+  const hole2R = 446;
+  const hole2Cx = 424;
+
+  const bViaCx = 178;
+  const bViaTopL = 155, bViaTopR = 201; // width 46
+  const bViaBotL = 165, bViaBotR = 191; // width 26
+
+  // Helper to split horizontal segments [x1, x2] by open intervals [cutL, cutR]
+  function splitSegmentsByCut(segs, cutL, cutR) {
+    const out = [];
+    segs.forEach(([a, b]) => {
+      if (cutR <= a || cutL >= b) {
+        out.push([a, b]);
+      } else {
+        if (cutL > a) out.push([a, cutL]);
+        if (cutR < b) out.push([cutR, b]);
+      }
+    });
+    return out;
+  }
+
+  // Determine active top & bottom surfaces before plating/mask
+  const coreTopY = cy - coreHalfH;
+  const coreBotY = cy + coreHalfH;
+  const innerCuTopY = coreTopY - innerCuH;
+  const innerCuBotY = coreBotY;
+
+  // Buried 1st buildup coordinates (used when buildupCount >= 2)
+  const b1TopY = innerCuTopY - b1H;
+  const b1BotEndY = innerCuBotY + innerCuH + b1H;
+  const b1CuTopY = b1TopY - b1CuH;
+  const b1CuBotY = b1BotEndY;
+
+  const ppTopY = isMultiBuildup ? (b1TopY - ppH) : (innerCuTopY - ppH);
+  const ppBotY = isMultiBuildup ? b1BotEndY : (coreBotY + innerCuH);
+
+  // Where an active outer laser blind via lands (Core inner pad on 1st buildup, or buried Buildup 1 pad on 2nd buildup!)
+  const viaTargetTopY = isMultiBuildup ? b1CuTopY : innerCuTopY;
+
+  // Outer copper sits either on outer PP (if multilayer) or on Core (if 2-layer)
+  const surfTopBaseY = snap.isMultilayer ? ppTopY : coreTopY;
+  const surfBotBaseY = snap.isMultilayer ? (ppBotY + ppH) : coreBotY;
+
+  let g = `<g transform="translate(${offsetX}, ${offsetY})">`;
+
+  // Background Card
+  g += `<rect x="0" y="0" width="${W}" height="${H}" rx="10" fill="${bgCard}" stroke="${strokeCard}" stroke-width="${options.isActive ? 2.5 : 1.2}"/>`;
+
+  // Header Banner inside Card
+  g += `<rect x="0" y="0" width="${W}" height="46" rx="10" fill="${isLight ? '#e2e8f0' : '#1e293b'}"/>`;
+  g += `<rect x="0" y="36" width="${W}" height="10" fill="${isLight ? '#e2e8f0' : '#1e293b'}"/>`;
+  g += `<rect x="12" y="10" width="28" height="26" rx="6" fill="${def.color}"/>`;
+  g += `<text x="26" y="27" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="800">${snap.stepIndex + 1}</text>`;
+  g += `<text x="48" y="22" fill="${textMain}" font-size="13.5" font-weight="800">${escapeXml(snap.stepTitle)}</text>`;
+  g += `<text x="48" y="37" fill="${textSub}" font-size="11">${escapeXml(snap.stepParam)} — ${escapeXml(snap.stepNote)}</text>`;
+
+  if (options.badgeText) {
+    g += `<rect x="${W - 110}" y="11" width="96" height="22" rx="11" fill="${options.badgeColor || '#0ea5e9'}" opacity="0.18"/>`;
+    g += `<text x="${W - 62}" y="26" text-anchor="middle" fill="${options.badgeColor || '#38bdf8'}" font-size="11" font-weight="700">${escapeXml(options.badgeText)}</text>`;
+  }
+
+  // Scale inner drawing SVG to fit remaining card area
+  const drawY = 50;
+  const drawH = H - 54;
+  const scaleX = W / vbW;
+  const scaleY = drawH / vbH;
+  const scale = Math.min(scaleX, scaleY);
+  const transX = (W - vbW * scale) / 2;
+  const transY = drawY + (drawH - vbH * scale) / 2;
+
+  g += `<g transform="translate(${transX.toFixed(1)}, ${transY.toFixed(1)}) scale(${scale.toFixed(3)})">`;
+
+  /* --- 1. CORE DIELECTRIC LAYER (Supports Single Core, Multi-Core Core1+PP+Core2, and M+N Hybrid Sub-Boards!) --- */
+  const coreFill = snap.isPtfe ? '#0d9488' : '#65a30d';
+  const coreStroke = snap.isPtfe ? '#14b8a6' : '#84cc16';
+
+  let coreSegs = [[boardLeft, boardRight]];
+  if (snap.hasThroughHole || snap.buriedHole) coreSegs = splitSegmentsByCut(coreSegs, holeL, holeR);
+  if (snap.hasSecondHole) coreSegs = splitSegmentsByCut(coreSegs, hole2L, hole2R);
+
+  // Sub-board M & N hole coordinates when in M+N Bonded mode (aligned with Pad 2 [142..214] & Pad 4 [378..468]!)
+  const mHoleL = 160, mHoleR = 196, mHoleCx = 178;
+  const nHoleL = 406, nHoleR = 442, nHoleCx = 424;
+  const subM = (snap.isMNSubBoard && snap.subBoardM) ? snap.subBoardM : null;
+  const subN = (snap.isMNSubBoard && snap.subBoardN) ? snap.subBoardN : null;
+  const mHasHole = Boolean(subM && (subM.hasThroughHole || subM.buriedHole));
+  const nHasHole = Boolean(subN && (subN.hasThroughHole || subN.buriedHole));
+  const mHasCap = Boolean(subM && (subM.hasCapPlate || subM.buriedHole?.hasCapPlate));
+  const nHasCap = Boolean(subN && (subN.hasCapPlate || subN.buriedHole?.hasCapPlate));
+  const mPlugged = Boolean(subM && (subM.hasResinPlug || subM.buriedHole?.hasResinPlug));
+  const nPlugged = Boolean(subN && (subN.hasResinPlug || subN.buriedHole?.hasResinPlug));
+  const mPlated = Boolean(subM && (subM.pthHasSeed || subM.pthHasPlated || subM.buriedHole?.hasSeed || subM.buriedHole?.hasPlated)) || Boolean(mHasHole && !mPlugged && (snap.hasSeedCu || snap.hasPlatedCu));
+  const nPlated = Boolean(subN && (subN.pthHasSeed || subN.pthHasPlated || subN.buriedHole?.hasSeed || subN.buriedHole?.hasPlated)) || Boolean(nHasHole && !nPlugged && (snap.hasSeedCu || snap.hasPlatedCu));
+  const mThick = Boolean(subM && (subM.pthHasPlated || subM.buriedHole?.hasPlated)) || Boolean(mHasHole && !mPlugged && snap.hasPlatedCu);
+  const nThick = Boolean(subN && (subN.pthHasPlated || subN.buriedHole?.hasPlated)) || Boolean(nHasHole && !nPlugged && snap.hasPlatedCu);
+  const mWallT = mThick ? 5 : (mPlated ? 2.5 : 0);
+  const nWallT = nThick ? 5 : (nPlated ? 2.5 : 0);
+
+  // Pre-compute outer foil & plated metal Y coordinates so sub-board holes align to the exact pixel
+  const effectiveOuterCuH = snap.isSapMode ? 2.5 : outerCuH;
+  const topFoilY = surfTopBaseY - effectiveOuterCuH;
+  const botFoilY = surfBotBaseY;
+  const activePlatedH = snap.sapPatternPlated ? 10 : (snap.hasPlatedCu ? platedCuH : 2.5);
+  const topMetalY = (snap.hasSeedCu || snap.hasPlatedCu || snap.sapPatternPlated)
+    ? (topFoilY - activePlatedH)
+    : topFoilY;
+  const botMetalY = (snap.hasSeedCu || snap.hasPlatedCu || snap.sapPatternPlated)
+    ? (botFoilY + effectiveOuterCuH + activePlatedH)
+    : (botFoilY + effectiveOuterCuH);
+
+  const coreLV = (!snap.isMultilayer && !snap.isMultiCore && snap.hasLaserVia)
+    ? {
+        active: true,
+        mode: snap.laserViaMode || 'single',
+        hasSeed: snap.laserViaHasSeed,
+        hasPlated: snap.laserViaHasPlated,
+        viaFilled: snap.viaFilled
+      }
+    : ((!snap.isMultiCore && snap.buriedCoreLaserVia) ? { active: false, ...snap.buriedCoreLaserVia } : null);
+
+  if (!snap.isMultiCore) {
+    // Standard Single Core (supports direct Core Single-Sided Laser Via AND Core Double-Sided X-Via!)
+    let singleCoreSegs = coreSegs.map(s => [...s]);
+    if (coreLV) singleCoreSegs = splitSegmentsByCut(singleCoreSegs, bViaTopL, bViaTopR);
+    singleCoreSegs.forEach(([a, b]) => {
+      g += `<rect x="${a}" y="${coreTopY}" width="${b - a}" height="${coreHalfH * 2}" fill="${coreFill}" stroke="${coreStroke}" stroke-width="1"/>`;
+    });
+
+    if (coreLV) {
+      if (coreLV.mode === 'xvia') {
+        // Double-Sided Laser X-Via Hourglass dielectric wedges in Core
+        g += `<polygon points="${bViaTopL},${coreTopY} ${bViaBotL},${cy} ${bViaTopL},${coreBotY}" fill="${coreFill}" stroke="${coreStroke}" stroke-width="0.9"/>`;
+        g += `<polygon points="${bViaTopR},${coreTopY} ${bViaBotR},${cy} ${bViaTopR},${coreBotY}" fill="${coreFill}" stroke="${coreStroke}" stroke-width="0.9"/>`;
+      } else {
+        // Single-Sided Tapered Laser Via dielectric wedges in Core
+        g += `<polygon points="${bViaTopL},${coreTopY} ${bViaBotL},${coreBotY} ${bViaTopL},${coreBotY}" fill="${coreFill}" stroke="${coreStroke}" stroke-width="0.9"/>`;
+        g += `<polygon points="${bViaTopR},${coreTopY} ${bViaBotR},${coreBotY} ${bViaTopR},${coreBotY}" fill="${coreFill}" stroke="${coreStroke}" stroke-width="0.9"/>`;
+      }
+
+      if (coreLV.active && !coreLV.hasSeed && !coreLV.hasPlated) {
+        // Freshly laser-ablated Core via contour (before electroless copper)
+        if (coreLV.mode === 'xvia') {
+          g += `<polyline points="${bViaTopL},${topFoilY} ${bViaBotL},${cy} ${bViaTopL},${botFoilY + effectiveOuterCuH}" fill="none" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+          g += `<polyline points="${bViaTopR},${topFoilY} ${bViaBotR},${cy} ${bViaTopR},${botFoilY + effectiveOuterCuH}" fill="none" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+        } else {
+          g += `<polyline points="${bViaTopL},${topFoilY} ${bViaBotL},${coreBotY} ${bViaBotR},${coreBotY} ${bViaTopR},${topFoilY}" fill="none" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+        }
+      } else if (!coreLV.active) {
+        // Buried Core Laser Via / X-Via preserved inside Core after buildup lamination!
+        const bCol = coreLV.hasPlated ? '#f59e0b' : '#fbbf24';
+        const bw = coreLV.hasPlated ? 4.5 : 2.2;
+        if (coreLV.viaFilled && coreLV.hasPlated) {
+          if (coreLV.mode === 'xvia') {
+            g += `<polygon points="${bViaTopL},${coreTopY} ${bViaTopR},${coreTopY} ${bViaBotR},${cy} ${bViaTopR},${coreBotY} ${bViaTopL},${coreBotY} ${bViaBotL},${cy}" fill="#f59e0b" stroke="#b45309" stroke-width="0.8"/>`;
+            g += `<line x1="${bViaBotL}" y1="${cy}" x2="${bViaBotR}" y2="${cy}" stroke="#b45309" stroke-width="1" stroke-dasharray="2,2" opacity="0.7"/>`;
+          } else {
+            g += `<polygon points="${bViaTopL},${coreTopY} ${bViaTopR},${coreTopY} ${bViaBotR},${coreBotY} ${bViaBotL},${coreBotY}" fill="#f59e0b" stroke="#b45309" stroke-width="0.8"/>`;
+          }
+        } else if (coreLV.hasSeed || coreLV.hasPlated) {
+          if (coreLV.mode === 'xvia') {
+            g += `<polygon points="${bViaTopL},${coreTopY} ${bViaTopL + bw},${coreTopY} ${bViaBotL + bw},${cy} ${bViaTopL + bw},${coreBotY} ${bViaTopL},${coreBotY} ${bViaBotL},${cy}" fill="${bCol}"/>`;
+            g += `<polygon points="${bViaTopR},${coreTopY} ${bViaTopR - bw},${coreTopY} ${bViaBotR - bw},${cy} ${bViaTopR - bw},${coreBotY} ${bViaTopR},${coreBotY} ${bViaBotR},${cy}" fill="${bCol}"/>`;
+          } else {
+            g += `<polygon points="${bViaTopL},${coreTopY} ${bViaTopL + bw},${coreTopY} ${bViaBotL + bw},${coreBotY - bw} ${bViaBotR - bw},${coreBotY - bw} ${bViaTopR - bw},${coreTopY} ${bViaTopR},${coreTopY} ${bViaBotR},${coreBotY} ${bViaBotL},${coreBotY}" fill="${bCol}"/>`;
+          }
+        }
+      }
+    }
+
+    if (!snap.isPtfe) {
+      for (let x = boardLeft + 14; x < boardRight - 10; x += 22) {
+        if (coreLV && x > bViaTopL - 12 && x < bViaTopR + 6) continue;
+        if ((snap.hasThroughHole || snap.buriedHole) && x > holeL - 12 && x < holeR + 6) continue;
+        if (snap.hasSecondHole && x > hole2L - 12 && x < hole2R + 6) continue;
+        g += `<line x1="${x}" y1="${cy - 8}" x2="${x + 12}" y2="${cy - 8}" stroke="#bef264" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.45"/>`;
+        g += `<line x1="${x + 5}" y1="${cy + 8}" x2="${x + 17}" y2="${cy + 8}" stroke="#bef264" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.45"/>`;
+      }
+    } else {
+      for (let x = boardLeft + 18; x < boardRight - 14; x += 28) {
+        if (coreLV && x > bViaTopL - 8 && x < bViaTopR + 8) continue;
+        if ((snap.hasThroughHole || snap.buriedHole) && x > holeL - 8 && x < holeR + 8) continue;
+        if (snap.hasSecondHole && x > hole2L - 8 && x < hole2R + 8) continue;
+        g += `<circle cx="${x}" cy="${cy}" r="2.2" fill="#99f6e4" opacity="0.5"/>`;
+      }
+    }
+    const singleCoreLabel = snap.mnPhase === 'M'
+      ? `子板 M (${snap.isPtfe ? 'PTFE 高頻板' : 'FR4 Core'})`
+      : (snap.mnPhase === 'N' ? `子板 N (${snap.isPtfe ? 'PTFE 高頻板' : 'FR4 Core'})` : (snap.isPtfe ? 'PTFE 無玻纖 Core' : 'Core 核心層'));
+    g += `<text x="102" y="${cy + 4}" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700" opacity="0.92">${singleCoreLabel}</text>`;
+  } else if (snap.isMNSubBoard && subM && subN) {
+    // === TRUE M+N TWO-BOARD BONDING (Sub-Board M on Top + Central Bonding PP + Sub-Board N on Bottom) ===
+    const c1Top = coreTopY;
+    const c1H = Math.round(coreHalfH * 0.74);
+    const midPpTop = c1Top + c1H;
+    const midPpH = (coreHalfH * 2) - (c1H * 2);
+    const c2Top = midPpTop + midPpH;
+    const c2H = c1H;
+
+    const c1Fill = subM.isPtfe ? '#0d9488' : '#65a30d';
+    const c1Stroke = subM.isPtfe ? '#14b8a6' : '#84cc16';
+    const c2Fill = subN.isPtfe ? '#0d9488' : '#65a30d';
+    const c2Stroke = subN.isPtfe ? '#14b8a6' : '#84cc16';
+    const midBondFill = '#ec4899';
+
+    let mSegs = coreSegs.map(s => [...s]);
+    if (mHasHole) mSegs = splitSegmentsByCut(mSegs, mHoleL, mHoleR);
+
+    let nSegs = coreSegs.map(s => [...s]);
+    if (nHasHole) nSegs = splitSegmentsByCut(nSegs, nHoleL, nHoleR);
+
+    // 1) Top Sub-Board M Dielectric
+    mSegs.forEach(([a, b]) => {
+      g += `<rect x="${a}" y="${c1Top}" width="${b - a}" height="${c1H}" fill="${c1Fill}" stroke="${c1Stroke}" stroke-width="0.9"/>`;
+    });
+    // If Sub-Board M was itself a multilayer board (e.g. 4L), draw its internal layer split & inner copper pads!
+    if (subM.isMultilayer || subM.isMultiCore) {
+      const mMidY = c1Top + Math.round(c1H / 2);
+      mSegs.forEach(([a, b]) => {
+        g += `<line x1="${a}" y1="${mMidY}" x2="${b}" y2="${mMidY}" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4,2"/>`;
+      });
+      let mInnerPads = [[58, 106], [142, 214], [254, 346], [378, 468]];
+      if (mHasHole) mInnerPads = splitSegmentsByCut(mInnerPads, mHoleL, mHoleR);
+      if (snap.hasThroughHole) mInnerPads = splitSegmentsByCut(mInnerPads, holeL, holeR);
+      if (snap.hasSecondHole) mInnerPads = splitSegmentsByCut(mInnerPads, hole2L, hole2R);
+      mInnerPads.forEach(([x1, x2]) => {
+        g += `<rect x="${x1}" y="${mMidY - 2}" width="${x2 - x1}" height="4" rx="0.8" fill="#d97706"/>`;
+      });
+    }
+
+    // 2) Central Bonding PP (Adhesive Prepreg bonding Sub-Board M and Sub-Board N)
+    coreSegs.forEach(([a, b]) => {
+      g += `<rect x="${a}" y="${midPpTop}" width="${b - a}" height="${midPpH}" fill="${midBondFill}" opacity="0.76" stroke="#f472b6" stroke-width="0.8"/>`;
+    });
+
+    // 3) Bottom Sub-Board N Dielectric
+    nSegs.forEach(([a, b]) => {
+      g += `<rect x="${a}" y="${c2Top}" width="${b - a}" height="${c2H}" fill="${c2Fill}" stroke="${c2Stroke}" stroke-width="0.9"/>`;
+    });
+    // If Sub-Board N was itself a multilayer board (e.g. 4L), draw its internal layer split & inner copper pads!
+    if (subN.isMultilayer || subN.isMultiCore) {
+      const nMidY = c2Top + Math.round(c2H / 2);
+      nSegs.forEach(([a, b]) => {
+        g += `<line x1="${a}" y1="${nMidY}" x2="${b}" y2="${nMidY}" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4,2"/>`;
+      });
+      let nInnerPads = [[58, 106], [146, 210], [254, 346], [378, 468]];
+      if (nHasHole) nInnerPads = splitSegmentsByCut(nInnerPads, nHoleL, nHoleR);
+      if (snap.hasThroughHole) nInnerPads = splitSegmentsByCut(nInnerPads, holeL, holeR);
+      if (snap.hasSecondHole) nInnerPads = splitSegmentsByCut(nInnerPads, hole2L, hole2R);
+      nInnerPads.forEach(([x1, x2]) => {
+        g += `<rect x="${x1}" y="${nMidY - 2}" width="${x2 - x1}" height="4" rx="0.8" fill="#d97706"/>`;
+      });
+    }
+
+    // 4) Sub-Board M's bottom copper (facing Bonding PP at midPpTop - 5.5)
+    const mBotEtched = Boolean(subM.outerEtched || subM.innerEtched || subM.sapPatternPlated);
+    let mBotSegs = mBotEtched
+      ? [[58, 106], [142, 214], [254, 346], [378, 468]]
+      : [[boardLeft, boardRight]];
+    if (mHasHole && !mHasCap) mBotSegs = splitSegmentsByCut(mBotSegs, mHoleL, mHoleR);
+    if (snap.hasThroughHole) mBotSegs = splitSegmentsByCut(mBotSegs, holeL, holeR);
+    if (snap.hasSecondHole) mBotSegs = splitSegmentsByCut(mBotSegs, hole2L, hole2R);
+    const mBotCuColor = (subM.hasPlatedCu || subM.sapPatternPlated) ? '#f59e0b' : '#d97706';
+    mBotSegs.forEach(([x1, x2]) => {
+      g += `<rect x="${x1}" y="${midPpTop - 5.5}" width="${x2 - x1}" height="5.5" rx="1" fill="${mBotCuColor}" stroke="#451a03" stroke-width="0.8"/>`;
+    });
+
+    // 5) Sub-Board N's top copper (facing Bonding PP at c2Top)
+    const nTopEtched = Boolean(subN.outerEtched || subN.innerEtched || subN.sapPatternPlated);
+    let nTopSegs = nTopEtched
+      ? [[58, 106], [146, 210], [254, 346], [378, 468]]
+      : [[boardLeft, boardRight]];
+    if (nHasHole && !nHasCap) nTopSegs = splitSegmentsByCut(nTopSegs, nHoleL, nHoleR);
+    if (snap.hasThroughHole) nTopSegs = splitSegmentsByCut(nTopSegs, holeL, holeR);
+    if (snap.hasSecondHole) nTopSegs = splitSegmentsByCut(nTopSegs, hole2L, hole2R);
+    const nTopCuColor = (subN.hasPlatedCu || subN.sapPatternPlated) ? '#f59e0b' : '#d97706';
+    nTopSegs.forEach(([x1, x2]) => {
+      g += `<rect x="${x1}" y="${c2Top}" width="${x2 - x1}" height="5.5" rx="1" fill="${nTopCuColor}" stroke="#451a03" stroke-width="0.8"/>`;
+    });
+
+    // 6) Sub-Board M's Own Drilled / Plated / Plugged / Cap-Plated Hole (at x = 178, centered in Pad 2 [142..214]!)
+    if (mHasHole) {
+      const mHoleTopY = snap.isMultilayer ? innerCuTopY : ((mPlugged || mHasCap) ? topFoilY : topMetalY);
+      const mHoleBotY = midPpTop;
+      const mHoleH = mHoleBotY - mHoleTopY;
+      const mWallCol = mThick ? '#f59e0b' : '#fbbf24';
+
+      g += `<rect x="${mHoleL}" y="${mHoleTopY}" width="${mHoleR - mHoleL}" height="${mHoleH}" fill="#0f172a"/>`;
+      if (mPlated) {
+        g += `<rect x="${mHoleL}" y="${mHoleTopY}" width="${mWallT}" height="${mHoleH}" fill="${mWallCol}"/>`;
+        g += `<rect x="${mHoleR - mWallT}" y="${mHoleTopY}" width="${mWallT}" height="${mHoleH}" fill="${mWallCol}"/>`;
+      }
+      if (mPlugged) {
+        const mpL = mHoleL + mWallT;
+        const mpW = (mHoleR - mHoleL) - mWallT * 2;
+        g += `<rect x="${mpL}" y="${mHoleTopY}" width="${mpW}" height="${mHoleH}" fill="#94a3b8" stroke="#cbd5e1" stroke-width="0.7"/>`;
+        for (let py = mHoleTopY + 8; py < mHoleBotY - 5; py += 12) {
+          g += `<circle cx="${mHoleCx - 4}" cy="${py}" r="1.4" fill="#e2e8f0" opacity="0.7"/>`;
+          g += `<circle cx="${mHoleCx + 4}" cy="${py + 4}" r="1.4" fill="#e2e8f0" opacity="0.7"/>`;
+        }
+        if (mHasCap) {
+          g += `<rect x="${mpL - 2}" y="${mHoleTopY}" width="${mpW + 4}" height="4.5" fill="#f59e0b"/>`;
+          g += `<rect x="${mpL - 2}" y="${mHoleBotY - 4.5}" width="${mpW + 4}" height="4.5" fill="#f59e0b"/>`;
+        }
+      }
+    }
+
+    // 7) Sub-Board N's Own Drilled / Plated / Plugged / Cap-Plated Hole (at x = 424, centered in Pad 4 [378..468]!)
+    if (nHasHole) {
+      const nHoleTopY = c2Top;
+      const nHoleBotY = snap.isMultilayer ? (innerCuBotY + innerCuH) : ((nPlugged || nHasCap) ? (botFoilY + effectiveOuterCuH) : botMetalY);
+      const nHoleH = nHoleBotY - nHoleTopY;
+      const nWallCol = nThick ? '#f59e0b' : '#fbbf24';
+
+      g += `<rect x="${nHoleL}" y="${nHoleTopY}" width="${nHoleR - nHoleL}" height="${nHoleH}" fill="#0f172a"/>`;
+      if (nPlated) {
+        g += `<rect x="${nHoleL}" y="${nHoleTopY}" width="${nWallT}" height="${nHoleH}" fill="${nWallCol}"/>`;
+        g += `<rect x="${nHoleR - nWallT}" y="${nHoleTopY}" width="${nWallT}" height="${nHoleH}" fill="${nWallCol}"/>`;
+      }
+      if (nPlugged) {
+        const npL = nHoleL + nWallT;
+        const npW = (nHoleR - nHoleL) - nWallT * 2;
+        g += `<rect x="${npL}" y="${nHoleTopY}" width="${npW}" height="${nHoleH}" fill="#94a3b8" stroke="#cbd5e1" stroke-width="0.7"/>`;
+        for (let py = nHoleTopY + 8; py < nHoleBotY - 5; py += 12) {
+          g += `<circle cx="${nHoleCx - 4}" cy="${py}" r="1.4" fill="#e2e8f0" opacity="0.7"/>`;
+          g += `<circle cx="${nHoleCx + 4}" cy="${py + 4}" r="1.4" fill="#e2e8f0" opacity="0.7"/>`;
+        }
+        if (nHasCap) {
+          g += `<rect x="${npL - 2}" y="${nHoleTopY}" width="${npW + 4}" height="4.5" fill="#f59e0b"/>`;
+          g += `<rect x="${npL - 2}" y="${nHoleBotY - 4.5}" width="${npW + 4}" height="4.5" fill="#f59e0b"/>`;
+        }
+      }
+    }
+
+    // 8) Sub-Board M Laser Blind Via (or Post-Bond Laser Via on top of M when !snap.isMultilayer)
+    if (subM.hasLaserVia || (snap.hasLaserVia && !snap.isMultilayer)) {
+      const lvCx = mHasHole ? 82 : 178;
+      const lvTopY = c1Top - outerCuH;
+      const lvBotY = c1Top + Math.round(c1H * 0.62);
+      const lvPlated = (snap.hasLaserVia && !snap.isMultilayer)
+        ? (snap.laserViaHasSeed || snap.laserViaHasPlated)
+        : (subM.laserViaHasSeed || subM.laserViaHasPlated);
+      const lvFilled = (snap.hasLaserVia && !snap.isMultilayer)
+        ? (snap.viaFilled && snap.laserViaHasPlated)
+        : (subM.viaFilled && subM.laserViaHasPlated);
+      if (lvFilled) {
+        g += `<polygon points="${lvCx - 18},${lvTopY} ${lvCx + 18},${lvTopY} ${lvCx + 10},${lvBotY} ${lvCx - 10},${lvBotY}" fill="#f59e0b"/>`;
+      } else if (lvPlated) {
+        g += `<polygon points="${lvCx - 18},${lvTopY} ${lvCx + 18},${lvTopY} ${lvCx + 10},${lvBotY} ${lvCx - 10},${lvBotY}" fill="#0f172a" stroke="#fbbf24" stroke-width="2.5"/>`;
+      } else {
+        g += `<polygon points="${lvCx - 18},${lvTopY} ${lvCx + 18},${lvTopY} ${lvCx + 10},${lvBotY} ${lvCx - 10},${lvBotY}" fill="#0f172a" stroke="#a855f7" stroke-width="1.2" stroke-dasharray="2,2"/>`;
+      }
+    }
+
+    // Labels for Sub-Board M, Bonding PP, and Sub-Board N
+    const mTypeStr = `${subM.isPtfe ? 'PTFE' : 'FR4'}${subM.isMultilayer ? ' 多層' : ''}`;
+    const nTypeStr = `${subN.isPtfe ? 'PTFE' : 'FR4'}${subN.isMultilayer ? ' 多層' : ''}`;
+    g += `<text x="92" y="${c1Top + Math.min(16, c1H - 4)}" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="800">子板 M (${mTypeStr})</text>`;
+    g += `<text x="92" y="${midPpTop + Math.min(13, midPpH - 3)}" text-anchor="middle" fill="#ffffff" font-size="8" font-weight="700">Bonding PP 對接壓合層</text>`;
+    g += `<text x="92" y="${c2Top + Math.min(16, c2H - 4)}" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="800">子板 N (${nTypeStr})</text>`;
+  } else {
+    // MULTI-CORE STACKUP (Core 1 + Central Bonding PP + Core 2)
+    const c1Top = coreTopY;
+    const c1H = Math.round(coreHalfH * 0.68);
+    const midPpTop = c1Top + c1H;
+    const midPpH = (coreHalfH * 2) - (c1H * 2);
+    const c2Top = midPpTop + midPpH;
+    const c2H = c1H;
+
+    coreSegs.forEach(([a, b]) => {
+      // Top Core 1
+      g += `<rect x="${a}" y="${c1Top}" width="${b - a}" height="${c1H}" fill="${coreFill}" stroke="#84cc16" stroke-width="0.9"/>`;
+      // Central Bonding PP between Core 1 and Core 2
+      g += `<rect x="${a}" y="${midPpTop}" width="${b - a}" height="${midPpH}" fill="#10b981" opacity="0.72"/>`;
+      // Bottom Core 2
+      g += `<rect x="${a}" y="${c2Top}" width="${b - a}" height="${c2H}" fill="#65a30d" stroke="#84cc16" stroke-width="0.9"/>`;
+    });
+
+    // Draw internal L3 & L4 etched copper pads on the inner faces of Core 1 and Core 2!
+    const midPads = buildInnerPadSegments();
+    midPads.forEach(([x1, x2]) => {
+      g += `<rect x="${x1}" y="${midPpTop}" width="${x2 - x1}" height="5.5" rx="1" fill="#d97706" stroke="#451a03" stroke-width="0.8"/>`;
+      g += `<rect x="${x1}" y="${c2Top - 5.5}" width="${x2 - x1}" height="5.5" rx="1" fill="#d97706" stroke="#451a03" stroke-width="0.8"/>`;
+    });
+
+    if (snap.hasBuriedSubVia) {
+      const bvX = 224;
+      g += `<rect x="${bvX - 8}" y="${innerCuTopY}" width="16" height="${c1H + innerCuH + 5.5}" fill="#94a3b8" stroke="#f59e0b" stroke-width="2.5"/>`;
+      g += `<rect x="${bvX - 8}" y="${c2Top - 5.5}" width="16" height="${c2H + innerCuH + 5.5}" fill="#94a3b8" stroke="#f59e0b" stroke-width="2.5"/>`;
+    }
+
+    // Labels for Multi-Core
+    g += `<text x="96" y="${c1Top + Math.min(13, c1H - 3)}" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="800">Core 1 (L2/L3)</text>`;
+    g += `<text x="96" y="${midPpTop + Math.min(12, midPpH - 2)}" text-anchor="middle" fill="#ffffff" font-size="8" font-weight="700">中間 PP 半固化片</text>`;
+    g += `<text x="96" y="${c2Top + Math.min(13, c2H - 3)}" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="800">Core 2 (L4/L5)</text>`;
+  }
+
+  /* --- 1B. EMBEDDED COMPONENT IN CAVITY (內埋主動晶片 IC Die / 被動元件 MLCC) --- */
+  if (snap.hasEmbeddedComp && !snap.isMultilayer) {
+    // Before encapsulation lamination: show cavity cutout in Core top and placed IC Die with Cu Pillars!
+    const dieLeft = 148, dieRight = 212, dieTop = coreTopY - 14, dieH = 26;
+    g += `<rect x="${dieLeft - 4}" y="${coreTopY - 2}" width="${(dieRight - dieLeft) + 8}" height="16" fill="#0f172a" stroke="#f43f5e" stroke-width="1" stroke-dasharray="2,2"/>`;
+    g += `<rect x="${dieLeft}" y="${dieTop}" width="${dieRight - dieLeft}" height="${dieH}" rx="2" fill="#e11d48" stroke="#fda4af" stroke-width="1.2"/>`;
+    // Die Cu Pillars (Left & Right electrodes)
+    g += `<rect x="${dieLeft + 8}" y="${dieTop - 6}" width="14" height="6" rx="1" fill="#f59e0b" stroke="#fde047" stroke-width="0.8"/>`;
+    g += `<rect x="${dieRight - 22}" y="${dieTop - 6}" width="14" height="6" rx="1" fill="#f59e0b" stroke="#fde047" stroke-width="0.8"/>`;
+    g += `<text x="${(dieLeft + dieRight) / 2}" y="${dieTop + 16}" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="800">Embedded IC Die</text>`;
+  }
+
+  /* --- 2. INNER LAYER COPPER HELPER --- */
+  function buildInnerPadSegments(useSapPattern = false, cutByBuriedHole = true) {
+    let pads = useSapPattern
+      ? [[56, 78], [86, 108], [142, 214], [254, 346], [380, 405], [415, 440], [448, 470]]
+      : [
+          [58, 106],    // Left trace
+          [146, 210],   // Blind via capture pad
+          [256, 344],   // 1st PTH / Buried Via inner annular ring pad
+          [380, 466]    // 2nd PTH inner pad / right trace
+        ];
+    if (snap.hasThroughHole || (cutByBuriedHole && snap.buriedHole)) pads = splitSegmentsByCut(pads, holeL, holeR);
+    if (snap.hasSecondHole) pads = splitSegmentsByCut(pads, hole2L, hole2R);
+    return pads;
+  }
+
+  /* --- 3. PREPREG / BUILDUP DIELECTRIC LAYER (Supports 1st Buildup 4L AND 2nd+ Sequential Buildup!) --- */
+  if (snap.isMultilayer) {
+    const cuColor = '#d97706';
+    const oxideStroke = snap.hasOxide ? '#451a03' : '#b45309';
+
+    if (!isMultiBuildup) {
+      // === SINGLE BUILDUP LAYER (1+2+1 / 4L or 6L Multi-Core + Buildup) ===
+      const ppFill = snap.buildupType === 'RCC' ? '#0f766e' : '#059669';
+      const ppOpacity = '0.78';
+      const topDielectricH = coreTopY - ppTopY;
+      const botDielectricH = (ppBotY + ppH) - coreBotY;
+
+      if (!snap.hasLaserVia) {
+        let ppSegs = [[boardLeft, boardRight]];
+        if (snap.hasThroughHole) ppSegs = splitSegmentsByCut(ppSegs, holeL, holeR);
+        if (snap.hasSecondHole) ppSegs = splitSegmentsByCut(ppSegs, hole2L, hole2R);
+        ppSegs.forEach(([a, b]) => {
+          g += `<rect x="${a}" y="${ppTopY}" width="${b - a}" height="${topDielectricH}" fill="${ppFill}" opacity="${ppOpacity}"/>`;
+          g += `<rect x="${a}" y="${coreBotY}" width="${b - a}" height="${botDielectricH}" fill="${ppFill}" opacity="${ppOpacity}"/>`;
+        });
+      } else {
+        // Tapered Laser Blind Via on top Prepreg at [bViaTopL..bViaTopR] -> [bViaBotL..bViaBotR]
+        g += `<polygon points="${boardLeft},${ppTopY} ${bViaTopL},${ppTopY} ${bViaBotL},${innerCuTopY} ${boardLeft},${innerCuTopY}" fill="${ppFill}" opacity="${ppOpacity}"/>`;
+        g += `<rect x="${boardLeft}" y="${innerCuTopY}" width="${146 - boardLeft}" height="${innerCuH}" fill="${ppFill}" opacity="${ppOpacity}"/>`;
+
+        g += `<polygon points="${bViaTopR},${ppTopY} 240,${ppTopY} 240,${coreTopY} ${bViaBotR},${coreTopY}" fill="${ppFill}" opacity="${ppOpacity}"/>`;
+        let rightTopSegs = [[240, boardRight]];
+        if (snap.hasThroughHole) rightTopSegs = splitSegmentsByCut(rightTopSegs, holeL, holeR);
+        if (snap.hasSecondHole) rightTopSegs = splitSegmentsByCut(rightTopSegs, hole2L, hole2R);
+        rightTopSegs.forEach(([a, b]) => {
+          g += `<rect x="${a}" y="${ppTopY}" width="${b - a}" height="${topDielectricH}" fill="${ppFill}" opacity="${ppOpacity}"/>`;
+        });
+
+        let botSegs = [[boardLeft, boardRight]];
+        if (snap.hasThroughHole) botSegs = splitSegmentsByCut(botSegs, holeL, holeR);
+        if (snap.hasSecondHole) botSegs = splitSegmentsByCut(botSegs, hole2L, hole2R);
+        botSegs.forEach(([a, b]) => {
+          g += `<rect x="${a}" y="${coreBotY}" width="${b - a}" height="${botDielectricH}" fill="${ppFill}" opacity="${ppOpacity}"/>`;
+        });
+      }
+
+      // Re-draw inner copper pads on top of Prepreg resin so they are crisp and visible!
+      const innerPads = buildInnerPadSegments(snap.innerIsSap, true);
+      innerPads.forEach(([x1, x2]) => {
+        g += `<rect x="${x1}" y="${innerCuTopY}" width="${x2 - x1}" height="${innerCuH}" rx="1.2" fill="${cuColor}" stroke="${oxideStroke}" stroke-width="1.2"/>`;
+        g += `<rect x="${x1}" y="${innerCuBotY}" width="${x2 - x1}" height="${innerCuH}" rx="1.2" fill="${cuColor}" stroke="${oxideStroke}" stroke-width="1.2"/>`;
+      });
+
+      const buildupLabel = snap.buildupType === 'RCC' ? (snap.isSapMode ? 'ABF 超薄增層膜' : '無玻纖增層膜') : 'PP 半固化片';
+      g += `<text x="102" y="${ppTopY + 18}" text-anchor="middle" fill="#d1fae5" font-size="9.5" font-weight="700">${buildupLabel}</text>`;
+      g += `<text x="102" y="${ppBotY + 20}" text-anchor="middle" fill="#d1fae5" font-size="9" font-weight="700" opacity="0.85">${buildupLabel}</text>`;
+
+    } else {
+      // === MULTI-STAGE SEQUENTIAL BUILDUP (2nd+ Lamination over existing Buildup 1 traces & blind via!) ===
+      const b1Info = snap.buriedBuildup || { buildupType: 'RCC', isSapMode: true, hasLaserVia: true, laserViaHasPlated: true, viaFilled: true, etched: true };
+      const b1Fill = b1Info.buildupType === 'RCC' ? '#0f766e' : '#047857';
+      const ppFill = snap.buildupType === 'RCC' ? '#0d9488' : '#10b981';
+
+      let b1Segs = [[boardLeft, boardRight]];
+      if (snap.hasThroughHole || (snap.buriedHole && snap.buriedHole.level >= 1)) b1Segs = splitSegmentsByCut(b1Segs, holeL, holeR);
+      if (snap.hasSecondHole) b1Segs = splitSegmentsByCut(b1Segs, hole2L, hole2R);
+
+      let b2Segs = [[boardLeft, boardRight]];
+      if (snap.hasThroughHole) b2Segs = splitSegmentsByCut(b2Segs, holeL, holeR);
+      if (snap.hasSecondHole) b2Segs = splitSegmentsByCut(b2Segs, hole2L, hole2R);
+
+      // 3A) Draw Buried 1st Buildup Dielectric (between Core and Buried Buildup 1 Traces)
+      const b1TopDielH = coreTopY - b1TopY;
+      const b1BotDielH = b1BotEndY - coreBotY;
+      b1Segs.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${b1TopY}" width="${b - a}" height="${b1TopDielH}" fill="${b1Fill}" opacity="0.86"/>`;
+        g += `<rect x="${a}" y="${coreBotY}" width="${b - a}" height="${b1BotDielH}" fill="${b1Fill}" opacity="0.86"/>`;
+      });
+
+      // Re-draw Core's Inner Copper Pads (L3/L4)
+      const corePads = buildInnerPadSegments(snap.innerIsSap, true);
+      corePads.forEach(([x1, x2]) => {
+        g += `<rect x="${x1}" y="${innerCuTopY}" width="${x2 - x1}" height="${innerCuH}" rx="1.2" fill="${cuColor}" stroke="${oxideStroke}" stroke-width="1"/>`;
+        g += `<rect x="${x1}" y="${innerCuBotY}" width="${x2 - x1}" height="${innerCuH}" rx="1.2" fill="${cuColor}" stroke="${oxideStroke}" stroke-width="1"/>`;
+      });
+
+      // Draw Buried 1st-Stage Laser Blind Via inside Buried Buildup 1 (e.g. from Step 4-8!)
+      if (b1Info.hasLaserVia) {
+        if (b1Info.viaFilled && b1Info.laserViaHasPlated) {
+          g += `<polygon points="${bViaTopL - 1},${b1CuTopY} ${bViaTopR + 1},${b1CuTopY} ${bViaBotR},${innerCuTopY} ${bViaBotL},${innerCuTopY}" fill="#f59e0b"/>`;
+        } else if (b1Info.laserViaHasSeed || b1Info.laserViaHasPlated) {
+          const bw = b1Info.laserViaHasPlated ? 4.5 : 2.2;
+          const bc = b1Info.laserViaHasPlated ? '#f59e0b' : '#fbbf24';
+          g += `<polygon points="${bViaTopL},${b1CuTopY} ${bViaTopL + bw},${b1CuTopY} ${bViaBotL + bw},${innerCuTopY - bw} ${bViaBotR - bw},${innerCuTopY - bw} ${bViaTopR - bw},${b1CuTopY} ${bViaTopR},${b1CuTopY} ${bViaBotR},${innerCuTopY} ${bViaBotL},${innerCuTopY}" fill="${bc}"/>`;
+        }
+      }
+
+      // 3B) Draw Newly Laminated Outer 2nd Buildup Dielectric (encapsulating Buried Buildup 1 Traces!)
+      const b2TopDielH = b1TopY - ppTopY;
+      const b2BotDielH = (ppBotY + ppH) - b1BotEndY;
+
+      if (!snap.hasLaserVia) {
+        b2Segs.forEach(([a, b]) => {
+          g += `<rect x="${a}" y="${ppTopY}" width="${b - a}" height="${b2TopDielH}" fill="${ppFill}" opacity="0.72" stroke="#34d399" stroke-width="0.9"/>`;
+          g += `<rect x="${a}" y="${b1BotEndY}" width="${b - a}" height="${b2BotDielH}" fill="${ppFill}" opacity="0.72" stroke="#34d399" stroke-width="0.9"/>`;
+        });
+      } else {
+        // 2nd-stage Laser Blind Via drilled in Outer 2nd Buildup (landing on Buried Buildup 1 Pad at b1CuTopY!)
+        g += `<polygon points="${boardLeft},${ppTopY} ${bViaTopL},${ppTopY} ${bViaBotL},${b1CuTopY} ${boardLeft},${b1CuTopY}" fill="${ppFill}" opacity="0.72"/>`;
+        g += `<rect x="${boardLeft}" y="${b1CuTopY}" width="${142 - boardLeft}" height="${b1CuH}" fill="${ppFill}" opacity="0.72"/>`;
+        g += `<polygon points="${bViaTopR},${ppTopY} 240,${ppTopY} 240,${b1TopY} ${bViaBotR},${b1TopY}" fill="${ppFill}" opacity="0.72"/>`;
+        let rightTopSegs = [[240, boardRight]];
+        if (snap.hasThroughHole) rightTopSegs = splitSegmentsByCut(rightTopSegs, holeL, holeR);
+        if (snap.hasSecondHole) rightTopSegs = splitSegmentsByCut(rightTopSegs, hole2L, hole2R);
+        rightTopSegs.forEach(([a, b]) => {
+          g += `<rect x="${a}" y="${ppTopY}" width="${b - a}" height="${b2TopDielH}" fill="${ppFill}" opacity="0.72"/>`;
+        });
+        b2Segs.forEach(([a, b]) => {
+          g += `<rect x="${a}" y="${b1BotEndY}" width="${b - a}" height="${b2BotDielH}" fill="${ppFill}" opacity="0.72"/>`;
+        });
+      }
+
+      // 3C) Draw Buried 1st Buildup Copper Traces (L2 / L5 — e.g. Step 9's mSAP fine traces now buried inside!)
+      const b1Pads = buildInnerPadSegments(b1Info.isSapMode, Boolean(snap.buriedHole && snap.buriedHole.level >= 1));
+      const b1TraceColor = b1Info.isSapMode ? '#f59e0b' : '#d97706';
+      b1Pads.forEach(([x1, x2]) => {
+        g += `<rect x="${x1}" y="${b1CuTopY}" width="${x2 - x1}" height="${b1CuH}" rx="1" fill="${b1TraceColor}" stroke="#b45309" stroke-width="0.9"/>`;
+        g += `<rect x="${x1}" y="${b1CuBotY}" width="${x2 - x1}" height="${b1CuH}" rx="1" fill="${b1TraceColor}" stroke="#b45309" stroke-width="0.9"/>`;
+      });
+
+      // Labels for Buried 1st Buildup & Newly Laminated Outer 2nd Buildup
+      const b1Label = b1Info.buildupType === 'RCC' ? (b1Info.isSapMode ? 'ABF 內增層' : 'RCC 內增層') : 'PP 內增層';
+      const b2Label = snap.buildupType === 'RCC' ? (snap.isSapMode ? 'ABF 外增層' : 'RCC 外增層') : 'PP 增層半固化片';
+      g += `<text x="102" y="${b1TopY + 15}" text-anchor="middle" fill="#a7f3d0" font-size="8.5" font-weight="700">${b1Label}</text>`;
+      g += `<text x="102" y="${b1BotEndY - 8}" text-anchor="middle" fill="#a7f3d0" font-size="8.5" font-weight="700">${b1Label}</text>`;
+      g += `<text x="102" y="${ppTopY + 16}" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">${b2Label}</text>`;
+      g += `<text x="102" y="${b1BotEndY + 21}" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">${b2Label}</text>`;
+    }
+
+    // 3D) Draw Buried Through-Hole / Buried VIPPO Resin-Plugged & Cap-Plated Hole (when laminated over at Step 12!)
+    if (snap.buriedHole && !snap.hasThroughHole) {
+      const bh = snap.buriedHole;
+      const bhTopY = (isMultiBuildup && bh.level >= 1) ? b1CuTopY : innerCuTopY;
+      const bhBotY = (isMultiBuildup && bh.level >= 1) ? (b1CuBotY + b1CuH) : (innerCuBotY + innerCuH);
+      const bhH = bhBotY - bhTopY;
+      const bhPlated = bh.hasSeed || bh.hasPlated;
+      const bhWallT = bh.hasPlated ? platedCuH : (bh.hasSeed ? 2.5 : 0);
+      const bhWallCol = bh.hasPlated ? '#f59e0b' : '#fbbf24';
+
+      // Buried hole cavity
+      g += `<rect x="${holeL}" y="${bhTopY}" width="${holeR - holeL}" height="${bhH}" fill="#0f172a"/>`;
+
+      // Buried hole copper barrel walls
+      if (bhPlated) {
+        g += `<rect x="${holeL}" y="${bhTopY}" width="${bhWallT}" height="${bhH}" fill="${bhWallCol}"/>`;
+        g += `<rect x="${holeR - bhWallT}" y="${bhTopY}" width="${bhWallT}" height="${bhH}" fill="${bhWallCol}"/>`;
+      }
+
+      // Buried resin plug & Cap Plate copper seal
+      if (bh.hasResinPlug) {
+        const bPlugL = holeL + bhWallT;
+        const bPlugR = holeR - bhWallT;
+        const bPlugW = bPlugR - bPlugL;
+        g += `<rect x="${bPlugL}" y="${bhTopY}" width="${bPlugW}" height="${bhH}" fill="#94a3b8" stroke="#cbd5e1" stroke-width="0.8"/>`;
+        for (let py = bhTopY + 12; py < bhBotY - 6; py += 16) {
+          g += `<circle cx="${holeCx - 5}" cy="${py}" r="1.6" fill="#e2e8f0" opacity="0.65"/>`;
+          g += `<circle cx="${holeCx + 6}" cy="${py + 6}" r="1.6" fill="#e2e8f0" opacity="0.65"/>`;
+        }
+        if (bh.hasCapPlate) {
+          g += `<rect x="${bPlugL - 2}" y="${bhTopY}" width="${bPlugW + 4}" height="5" fill="#f59e0b" stroke="${snap.hasOxide ? '#451a03' : 'none'}" stroke-width="${snap.hasOxide ? 1 : 0}"/>`;
+          g += `<rect x="${bPlugL - 2}" y="${bhBotY - 5}" width="${bPlugW + 4}" height="5" fill="#f59e0b" stroke="${snap.hasOxide ? '#451a03' : 'none'}" stroke-width="${snap.hasOxide ? 1 : 0}"/>`;
+        }
+      }
+    }
+
+    // If Embedded Component is encapsulated inside the multilayer board, draw the Embedded IC Die + Cu Pillars + Laser Microvia to Die!
+    if (snap.hasEmbeddedComp) {
+      const dieLeft = 382, dieRight = 456, dieTop = innerCuTopY - 12, dieH = 26;
+      g += `<rect x="${dieLeft}" y="${dieTop}" width="${dieRight - dieLeft}" height="${dieH}" rx="2.5" fill="#e11d48" stroke="#fda4af" stroke-width="1.2"/>`;
+      // Left & Right Cu Pillars on the Embedded Die
+      const pil1X = dieLeft + 10, pil2X = dieRight - 22, pilY = dieTop - 6;
+      g += `<rect x="${pil1X}" y="${pilY}" width="12" height="6" rx="1" fill="#f59e0b" stroke="#fde047" stroke-width="0.7"/>`;
+      g += `<rect x="${pil2X}" y="${pilY}" width="12" height="6" rx="1" fill="#f59e0b" stroke="#fde047" stroke-width="0.7"/>`;
+      g += `<text x="${(dieLeft + dieRight) / 2}" y="${dieTop + 16}" text-anchor="middle" fill="#ffffff" font-size="8" font-weight="800">內埋晶片 (IC Die)</text>`;
+
+      // If laser_drill was performed on the embedded board, also show a microvia landing directly on the Die's Cu Pillar!
+      if (snap.hasLaserVia) {
+        const dieViaCx = pil1X + 6;
+        if (snap.laserViaHasPlated && snap.viaFilled) {
+          g += `<polygon points="${dieViaCx - 12},${ppTopY - outerCuH - platedCuH} ${dieViaCx + 12},${ppTopY - outerCuH - platedCuH} ${dieViaCx + 6},${pilY} ${dieViaCx - 6},${pilY}" fill="#f59e0b"/>`;
+        } else if (snap.laserViaHasSeed) {
+          g += `<polygon points="${dieViaCx - 12},${ppTopY - outerCuH} ${dieViaCx + 12},${ppTopY - outerCuH} ${dieViaCx + 6},${pilY} ${dieViaCx - 6},${pilY}" fill="#0f172a" stroke="#fbbf24" stroke-width="2"/>`;
+        } else {
+          g += `<polygon points="${dieViaCx - 12},${ppTopY - outerCuH} ${dieViaCx + 12},${ppTopY - outerCuH} ${dieViaCx + 6},${pilY} ${dieViaCx - 6},${pilY}" fill="#0f172a" stroke="#a855f7" stroke-width="1.2" stroke-dasharray="2,2"/>`;
+        }
+      }
+    }
+  }
+
+  /* --- 4. OUTER BASE COPPER FOIL (Or Ultra-Thin Seed Layer in mSAP/SAP Mode!) --- */
+  const showOuterFoil = true;
+  const outerOxideStroke = snap.outerOxide ? '#451a03' : 'none';
+  const outerOxideSw = snap.outerOxide ? 2.0 : 0;
+
+  if (showOuterFoil) {
+    const baseCuColor = snap.isSapMode ? '#fbbf24' : '#d97706';
+    const topIsEtched = Boolean(snap.outerEtched || snap.sapSeedStripped || (!snap.isMultilayer && !snap.postBondPlated && snap.topPreEtched));
+    const botIsEtched = Boolean(snap.outerEtched || snap.sapSeedStripped || (!snap.isMultilayer && !snap.postBondPlated && snap.botPreEtched));
+
+    // Top Outer Foil
+    if (!topIsEtched) {
+      let segsTop = [[boardLeft, boardRight]];
+      if (snap.hasLaserVia) segsTop = splitSegmentsByCut(segsTop, bViaTopL, bViaTopR);
+      if (!snap.isMultilayer && mHasHole && !mHasCap) segsTop = splitSegmentsByCut(segsTop, mHoleL, mHoleR);
+      if (snap.hasThroughHole) segsTop = splitSegmentsByCut(segsTop, holeL, holeR);
+      if (snap.hasSecondHole) segsTop = splitSegmentsByCut(segsTop, hole2L, hole2R);
+      segsTop.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${topFoilY}" width="${b - a}" height="${effectiveOuterCuH}" fill="${baseCuColor}" stroke="${outerOxideStroke}" stroke-width="${outerOxideSw}"/>`;
+      });
+    } else {
+      let topPads = snap.isSapMode
+        ? [[56, 78], [86, 108], [142, 214], [254, 346], [380, 405], [415, 440], [448, 470]]
+        : [[58, 106], [142, 214], [254, 346], [378, 468]];
+      if (snap.hasLaserVia) topPads = splitSegmentsByCut(topPads, bViaTopL, bViaTopR);
+      if (!snap.isMultilayer && mHasHole && !mHasCap) topPads = splitSegmentsByCut(topPads, mHoleL, mHoleR);
+      if (snap.hasThroughHole) topPads = splitSegmentsByCut(topPads, holeL, holeR);
+      if (snap.hasSecondHole) topPads = splitSegmentsByCut(topPads, hole2L, hole2R);
+      topPads.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${topFoilY}" width="${b - a}" height="${effectiveOuterCuH}" fill="${baseCuColor}" stroke="${outerOxideStroke}" stroke-width="${outerOxideSw}"/>`;
+      });
+    }
+
+    // Bottom Outer Foil
+    if (!botIsEtched) {
+      let segsBot = [[boardLeft, boardRight]];
+      if (!snap.isMultilayer && snap.hasLaserVia && snap.laserViaMode === 'xvia') {
+        segsBot = splitSegmentsByCut(segsBot, bViaTopL, bViaTopR);
+      }
+      if (!snap.isMultilayer && nHasHole && !nHasCap) segsBot = splitSegmentsByCut(segsBot, nHoleL, nHoleR);
+      if (snap.hasThroughHole) segsBot = splitSegmentsByCut(segsBot, holeL, holeR);
+      if (snap.hasSecondHole) segsBot = splitSegmentsByCut(segsBot, hole2L, hole2R);
+      segsBot.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${botFoilY}" width="${b - a}" height="${effectiveOuterCuH}" fill="${baseCuColor}" stroke="${outerOxideStroke}" stroke-width="${outerOxideSw}"/>`;
+      });
+    } else {
+      let botPads = snap.isSapMode
+        ? [[56, 78], [86, 108], [142, 214], [254, 346], [380, 405], [415, 440], [448, 470]]
+        : [[58, 106], [142, 214], [254, 346], [378, 468]];
+      if (!snap.isMultilayer && snap.hasLaserVia && snap.laserViaMode === 'xvia') {
+        botPads = splitSegmentsByCut(botPads, bViaTopL, bViaTopR);
+      }
+      if (!snap.isMultilayer && nHasHole && !nHasCap) botPads = splitSegmentsByCut(botPads, nHoleL, nHoleR);
+      if (snap.hasThroughHole) botPads = splitSegmentsByCut(botPads, holeL, holeR);
+      if (snap.hasSecondHole) botPads = splitSegmentsByCut(botPads, hole2L, hole2R);
+      botPads.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${botFoilY}" width="${b - a}" height="${effectiveOuterCuH}" fill="${baseCuColor}" stroke="${outerOxideStroke}" stroke-width="${outerOxideSw}"/>`;
+      });
+    }
+  }
+
+  /* --- 5. SEED COPPER & ELECTROPLATED COPPER (PTH Barrel 1 & 2 + Blind Via / Core Laser Via Fill + Surface / mSAP Pattern Plating) --- */
+  if (snap.hasSeedCu || snap.hasPlatedCu || snap.sapPatternPlated) {
+    const plateColor = (snap.hasPlatedCu || snap.sapPatternPlated) ? '#f59e0b' : '#fbbf24';
+    const wallT = snap.sapPatternPlated ? 10 : (snap.hasPlatedCu ? platedCuH : 2.5);
+    const topPlateY = topFoilY - wallT;
+    const botPlateY = botFoilY + effectiveOuterCuH;
+
+    // A1) 1st Through-hole barrel wall copper (ONLY drawn if pth_seed or panel_plate was run AFTER 1st mech_drill!)
+    const pthPlatedNow = snap.pthHasSeed || snap.pthHasPlated;
+    const pthWallT = snap.pthHasPlated ? platedCuH : 2.5;
+    const pthColor = snap.pthHasPlated ? '#f59e0b' : '#fbbf24';
+
+    if (snap.hasThroughHole && pthPlatedNow) {
+      g += `<rect x="${holeL}" y="${topPlateY}" width="${pthWallT}" height="${(botPlateY + wallT) - topPlateY}" fill="${pthColor}"/>`;
+      g += `<rect x="${holeR - pthWallT}" y="${topPlateY}" width="${pthWallT}" height="${(botPlateY + wallT) - topPlateY}" fill="${pthColor}"/>`;
+    }
+
+    // A2) 2nd Through-hole barrel wall copper (ONLY drawn if pth_seed or panel_plate was run AFTER 2nd mech_drill!)
+    const pth2PlatedNow = snap.pth2HasSeed || snap.pth2HasPlated;
+    const pth2WallT = snap.pth2HasPlated ? platedCuH : 2.5;
+    const pth2Color = snap.pth2HasPlated ? '#f59e0b' : '#fbbf24';
+
+    if (snap.hasSecondHole && pth2PlatedNow) {
+      g += `<rect x="${hole2L}" y="${topPlateY}" width="${pth2WallT}" height="${(botPlateY + wallT) - topPlateY}" fill="${pth2Color}"/>`;
+      g += `<rect x="${hole2R - pth2WallT}" y="${topPlateY}" width="${pth2WallT}" height="${(botPlateY + wallT) - topPlateY}" fill="${pth2Color}"/>`;
+    }
+
+    // B) Laser Via copper (Supports Multilayer Buildup μVia AND Direct 2L Core Single-Sided Laser Via / Double-Sided X-Via!)
+    const bViaPlatedNow = snap.laserViaHasSeed || snap.laserViaHasPlated;
+    const bViaWallT = snap.laserViaHasPlated ? platedCuH : 2.5;
+    const bViaColor = snap.laserViaHasPlated ? '#f59e0b' : '#fbbf24';
+
+    if (snap.hasLaserVia && snap.isMultilayer && bViaPlatedNow) {
+      if (snap.viaFilled && snap.laserViaHasPlated) {
+        g += `<polygon points="${bViaTopL - 2},${topPlateY} ${bViaTopR + 2},${topPlateY} ${bViaBotR},${viaTargetTopY} ${bViaBotL},${viaTargetTopY}" fill="${bViaColor}"/>`;
+      } else {
+        g += `<polygon points="${bViaTopL},${topPlateY} ${bViaTopL + bViaWallT},${topPlateY} ${bViaBotL + bViaWallT},${viaTargetTopY - bViaWallT} ${bViaBotR - bViaWallT},${viaTargetTopY - bViaWallT} ${bViaTopR - bViaWallT},${topPlateY} ${bViaTopR},${topPlateY} ${bViaBotR},${viaTargetTopY} ${bViaBotL},${viaTargetTopY}" fill="${bViaColor}"/>`;
+      }
+    } else if (snap.hasLaserVia && !snap.isMultilayer && !snap.isMultiCore && bViaPlatedNow) {
+      if (snap.laserViaMode === 'xvia') {
+        // Core Double-Sided X-Via (Hourglass) Plating / Copper Fill
+        if (snap.viaFilled && snap.laserViaHasPlated) {
+          g += `<polygon points="${bViaTopL - 2},${topPlateY} ${bViaTopR + 2},${topPlateY} ${bViaBotR},${cy} ${bViaTopR + 2},${botPlateY + wallT} ${bViaTopL - 2},${botPlateY + wallT} ${bViaBotL},${cy}" fill="${bViaColor}"/>`;
+          g += `<line x1="${bViaBotL}" y1="${cy}" x2="${bViaBotR}" y2="${cy}" stroke="#b45309" stroke-width="1.2" stroke-dasharray="2,2" opacity="0.75"/>`;
+        } else {
+          g += `<polygon points="${bViaTopL},${topPlateY} ${bViaTopL + bViaWallT},${topPlateY} ${bViaBotL + bViaWallT},${cy} ${bViaTopL + bViaWallT},${botPlateY + wallT} ${bViaTopL},${botPlateY + wallT} ${bViaBotL},${cy}" fill="${bViaColor}"/>`;
+          g += `<polygon points="${bViaTopR},${topPlateY} ${bViaTopR - bViaWallT},${topPlateY} ${bViaBotR - bViaWallT},${cy} ${bViaTopR - bViaWallT},${botPlateY + wallT} ${bViaTopR},${botPlateY + wallT} ${bViaBotR},${cy}" fill="${bViaColor}"/>`;
+        }
+      } else {
+        // Core Single-Sided Tapered Laser Via Plating / Copper Fill (landing on bottom copper foil at coreBotY!)
+        if (snap.viaFilled && snap.laserViaHasPlated) {
+          g += `<polygon points="${bViaTopL - 2},${topPlateY} ${bViaTopR + 2},${topPlateY} ${bViaBotR},${coreBotY} ${bViaBotL},${coreBotY}" fill="${bViaColor}"/>`;
+        } else {
+          g += `<polygon points="${bViaTopL},${topPlateY} ${bViaTopL + bViaWallT},${topPlateY} ${bViaBotL + bViaWallT},${coreBotY - bViaWallT} ${bViaBotR - bViaWallT},${coreBotY - bViaWallT} ${bViaTopR - bViaWallT},${topPlateY} ${bViaTopR},${topPlateY} ${bViaBotR},${coreBotY} ${bViaBotL},${coreBotY}" fill="${bViaColor}"/>`;
+        }
+      }
+    }
+
+    // C) Surface plated copper layer
+    const holeEdgeOffset = (snap.hasThroughHole && pthPlatedNow) ? pthWallT : 0;
+    const hole2EdgeOffset = (snap.hasSecondHole && pth2PlatedNow) ? pth2WallT : 0;
+    const bViaEdgeOffset = (snap.hasLaserVia && bViaPlatedNow) ? bViaWallT : 0;
+    const plateStrokeCol = snap.outerOxide ? '#451a03' : (snap.isSapMode ? '#d97706' : 'none');
+    const plateStrokeW = snap.outerOxide ? 2.0 : (snap.isSapMode ? 0.6 : 0);
+
+    if (!snap.outerEtched && !snap.sapPatternPlated) {
+      let segsTop = [[boardLeft, boardRight]];
+      if (snap.hasLaserVia && !(snap.viaFilled && snap.laserViaHasPlated)) {
+        segsTop = splitSegmentsByCut(segsTop, bViaTopL + bViaEdgeOffset, bViaTopR - bViaEdgeOffset);
+      }
+      if (!snap.isMultilayer && mHasHole && !mPlugged && !mHasCap) {
+        segsTop = splitSegmentsByCut(segsTop, mHoleL + mWallT, mHoleR - mWallT);
+      }
+      if (snap.hasThroughHole && !snap.hasCapPlate) {
+        segsTop = splitSegmentsByCut(segsTop, holeL + holeEdgeOffset, holeR - holeEdgeOffset);
+      }
+      if (snap.hasSecondHole) {
+        segsTop = splitSegmentsByCut(segsTop, hole2L + hole2EdgeOffset, hole2R - hole2EdgeOffset);
+      }
+      segsTop.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${topPlateY}" width="${b - a}" height="${wallT}" fill="${plateColor}" stroke="${plateStrokeCol}" stroke-width="${plateStrokeW}"/>`;
+      });
+
+      let segsBot = [[boardLeft, boardRight]];
+      if (!snap.isMultilayer && snap.hasLaserVia && snap.laserViaMode === 'xvia' && !(snap.viaFilled && snap.laserViaHasPlated)) {
+        segsBot = splitSegmentsByCut(segsBot, bViaTopL + bViaEdgeOffset, bViaTopR - bViaEdgeOffset);
+      }
+      if (!snap.isMultilayer && nHasHole && !nPlugged && !nHasCap) {
+        segsBot = splitSegmentsByCut(segsBot, nHoleL + nWallT, nHoleR - nWallT);
+      }
+      if (snap.hasThroughHole && !snap.hasCapPlate) {
+        segsBot = splitSegmentsByCut(segsBot, holeL + holeEdgeOffset, holeR - holeEdgeOffset);
+      }
+      if (snap.hasSecondHole) {
+        segsBot = splitSegmentsByCut(segsBot, hole2L + hole2EdgeOffset, hole2R - hole2EdgeOffset);
+      }
+      segsBot.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${botPlateY}" width="${b - a}" height="${wallT}" fill="${plateColor}" stroke="${plateStrokeCol}" stroke-width="${plateStrokeW}"/>`;
+      });
+    } else {
+      // Discrete traces (either Subtractive Etched OR mSAP Pattern Plated high-aspect-ratio vertical traces!)
+      let topPads = snap.isSapMode
+        ? [[56, 78], [86, 108], [142, 214], [254, 346], [380, 405], [415, 440], [448, 470]]
+        : [[58, 106], [142, 214], [254, 346], [378, 468]];
+      if (snap.hasLaserVia && !(snap.viaFilled && snap.laserViaHasPlated)) {
+        topPads = splitSegmentsByCut(topPads, bViaTopL + bViaEdgeOffset, bViaTopR - bViaEdgeOffset);
+      }
+      if (!snap.isMultilayer && mHasHole && !mPlugged && !mHasCap) {
+        topPads = splitSegmentsByCut(topPads, mHoleL + mWallT, mHoleR - mWallT);
+      }
+      if (snap.hasThroughHole && !snap.hasCapPlate) {
+        topPads = splitSegmentsByCut(topPads, holeL + holeEdgeOffset, holeR - holeEdgeOffset);
+      }
+      if (snap.hasSecondHole) {
+        topPads = splitSegmentsByCut(topPads, hole2L + hole2EdgeOffset, hole2R - hole2EdgeOffset);
+      }
+      topPads.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${topPlateY}" width="${b - a}" height="${wallT}" fill="${plateColor}" stroke="${plateStrokeCol}" stroke-width="${plateStrokeW}"/>`;
+      });
+
+      let botPads = snap.isSapMode
+        ? [[56, 78], [86, 108], [142, 214], [254, 346], [380, 405], [415, 440], [448, 470]]
+        : [[58, 106], [142, 214], [254, 346], [378, 468]];
+      if (!snap.isMultilayer && snap.hasLaserVia && snap.laserViaMode === 'xvia' && !(snap.viaFilled && snap.laserViaHasPlated)) {
+        botPads = splitSegmentsByCut(botPads, bViaTopL + bViaEdgeOffset, bViaTopR - bViaEdgeOffset);
+      }
+      if (!snap.isMultilayer && nHasHole && !nPlugged && !nHasCap) {
+        botPads = splitSegmentsByCut(botPads, nHoleL + nWallT, nHoleR - nWallT);
+      }
+      if (snap.hasThroughHole && !snap.hasCapPlate) {
+        botPads = splitSegmentsByCut(botPads, holeL + holeEdgeOffset, holeR - holeEdgeOffset);
+      }
+      if (snap.hasSecondHole) {
+        botPads = splitSegmentsByCut(botPads, hole2L + hole2EdgeOffset, hole2R - hole2EdgeOffset);
+      }
+      botPads.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${botPlateY}" width="${b - a}" height="${wallT}" fill="${plateColor}" stroke="${plateStrokeCol}" stroke-width="${plateStrokeW}"/>`;
+      });
+    }
+  }
+
+  /* --- 5B. RESIN PLUGGING & PLANARIZATION GRINDING (樹脂塞孔與刷磨平坦化 on 1st Hole) --- */
+  if (snap.hasThroughHole && snap.hasResinPlug) {
+    const pthWallT = (snap.pthHasSeed || snap.pthHasPlated) ? (snap.pthHasPlated ? platedCuH : 2.5) : 0;
+    const plugLeft = holeL + pthWallT;
+    const plugRight = holeR - pthWallT;
+    const plugW = plugRight - plugLeft;
+    const plugColor = '#94a3b8';
+    const plugStroke = '#cbd5e1';
+
+    // Main resin column inside the 1st through-hole
+    g += `<rect x="${plugLeft}" y="${topMetalY}" width="${plugW}" height="${botMetalY - topMetalY}" fill="${plugColor}" stroke="${plugStroke}" stroke-width="0.8"/>`;
+
+    // Filler texture dots inside resin plug
+    for (let py = topMetalY + 14; py < botMetalY - 8; py += 18) {
+      g += `<circle cx="${holeCx - 5}" cy="${py}" r="1.8" fill="#e2e8f0" opacity="0.65"/>`;
+      g += `<circle cx="${holeCx + 6}" cy="${py + 8}" r="1.8" fill="#e2e8f0" opacity="0.65"/>`;
+    }
+
+    if (snap.resinProtruding) {
+      g += `<path d="M ${plugLeft - 6} ${topMetalY} Q ${holeCx} ${topMetalY - 18} ${plugRight + 6} ${topMetalY} Z" fill="${plugColor}" stroke="${plugStroke}" stroke-width="1"/>`;
+      g += `<path d="M ${plugLeft - 6} ${botMetalY} Q ${holeCx} ${botMetalY + 18} ${plugRight + 6} ${botMetalY} Z" fill="${plugColor}" stroke="${plugStroke}" stroke-width="1"/>`;
+    }
+
+    if (snap.hasCapPlate) {
+      // Draw Cap Plating copper layer sealing over the planarized resin plug (VIPPO Overplate)
+      const capStroke = snap.outerOxide ? '#451a03' : 'none';
+      const capSw = snap.outerOxide ? 2.0 : 0;
+      g += `<rect x="${plugLeft - 2}" y="${topMetalY}" width="${plugW + 4}" height="${platedCuH}" fill="#f59e0b" stroke="${capStroke}" stroke-width="${capSw}"/>`;
+      g += `<rect x="${plugLeft - 2}" y="${botMetalY - platedCuH}" width="${plugW + 4}" height="${platedCuH}" fill="#f59e0b" stroke="${capStroke}" stroke-width="${capSw}"/>`;
+    }
+  }
+
+  /* --- 5C. SELECTIVE PLUGGING MASK SHIELD (選擇性塞孔遮蔽擋片 / 乾膜蓋孔 on 2nd Hole) --- */
+  if (snap.hasSelectiveMask && snap.hasSecondHole) {
+    const maskL = hole2L - 12;
+    const maskR = hole2R + 12;
+    const maskW = maskR - maskL;
+    const shieldH = 9;
+    // Top and bottom protective masking film / stencil over Hole 2 so resin only enters Hole 1
+    g += `<rect x="${maskL}" y="${topMetalY - shieldH - 1}" width="${maskW}" height="${shieldH}" rx="2.5" fill="#ec4899" stroke="#fbcfe8" stroke-width="1.2"/>`;
+    g += `<text x="${hole2Cx}" y="${topMetalY - 3.5}" text-anchor="middle" fill="#ffffff" font-size="6.8" font-weight="900">遮蔽擋片(Mask)</text>`;
+    g += `<rect x="${maskL}" y="${botMetalY + 1}" width="${maskW}" height="${shieldH}" rx="2.5" fill="#ec4899" stroke="#fbcfe8" stroke-width="1.2"/>`;
+    g += `<text x="${hole2Cx}" y="${botMetalY + 7.8}" text-anchor="middle" fill="#ffffff" font-size="6.8" font-weight="900">遮蔽擋片(Mask)</text>`;
+  }
+
+  /* --- 6. OUTER DRY FILM PHOTORESIST (When step is outer_dfr) --- */
+  if (snap.outerDfr) {
+    if (snap.isSapMode) {
+      // mSAP / SAP Negative Trench DFR: DFR covers the SPACES between traces, leaving vertical trenches open for pattern plating!
+      const sapDfrDams = [[40, 56], [70, 82], [96, 108], [122, 148], [208, 258], [342, 378], [392, 404], [418, 430], [444, 480]];
+      sapDfrDams.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${topMetalY - dfrH - 2}" width="${b - a}" height="${dfrH + 2}" rx="1.5" fill="#3b82f6" opacity="0.92" stroke="#93c5fd" stroke-width="0.9"/>`;
+        g += `<rect x="${a}" y="${botMetalY}" width="${b - a}" height="${dfrH + 2}" rx="1.5" fill="#3b82f6" opacity="0.92" stroke="#93c5fd" stroke-width="0.9"/>`;
+      });
+    } else {
+      // Standard Subtractive DFR: DFR covers the trace/pad positions to protect against etching
+      const outerPads = [[58, 106], [142, 214], [254, 346], [378, 468]];
+      outerPads.forEach(([a, b]) => {
+        g += `<rect x="${a}" y="${topMetalY - dfrH}" width="${b - a}" height="${dfrH}" rx="2" fill="#3b82f6" opacity="0.9" stroke="#93c5fd" stroke-width="1"/>`;
+        g += `<rect x="${a}" y="${botMetalY}" width="${b - a}" height="${dfrH}" rx="2" fill="#3b82f6" opacity="0.9" stroke="#93c5fd" stroke-width="1"/>`;
+      });
+    }
+  }
+
+  /* --- 7. SOLDER MASK LAYER (Covers board & traces, leaves Pad openings SRO) --- */
+  if (snap.hasSolderMask) {
+    const mc = snap.maskColor || '#059669';
+    const topMaskSegs = snap.hasSecondHole
+      ? [[40, 134], [220, 248], [352, 372], [472, 480]]
+      : [[40, 134], [220, 248], [352, 480]];
+    topMaskSegs.forEach(([a, b]) => {
+      g += `<rect x="${a}" y="${topMetalY - maskH}" width="${b - a}" height="${maskH + (surfTopBaseY - topMetalY)}" rx="2" fill="${mc}" opacity="0.88" stroke="#34d399" stroke-width="0.8"/>`;
+    });
+
+    const botHasRightOpening = Boolean(snap.hasSecondHole || (!snap.isMultilayer && nHasHole));
+    const botMaskSegs = botHasRightOpening
+      ? [[40, 138], [216, 248], [352, 372], [472, 480]]
+      : [[40, 138], [216, 248], [352, 480]];
+    botMaskSegs.forEach(([a, b]) => {
+      g += `<rect x="${a}" y="${surfBotBaseY}" width="${b - a}" height="${maskH + (botMetalY - surfBotBaseY)}" rx="2" fill="${mc}" opacity="0.88" stroke="#34d399" stroke-width="0.8"/>`;
+    });
+  }
+
+  /* --- 8. SURFACE FINISH (ENIG Gold layer on exposed pads & PTH barrel) --- */
+  if (snap.hasSurfaceFinish) {
+    const gold = '#fde047';
+    const goldStroke = '#eab308';
+    // Pad 2 (142..214 on top, 146..210 on bottom)
+    if (!snap.isMultilayer && mHasHole && !mPlugged && !mHasCap) {
+      g += `<rect x="142" y="${topMetalY - 3.5}" width="${mHoleL + mWallT - 142}" height="3.5" rx="1" fill="${gold}" stroke="${goldStroke}" stroke-width="0.6"/>`;
+      g += `<rect x="${mHoleR - mWallT}" y="${topMetalY - 3.5}" width="${214 - (mHoleR - mWallT)}" height="3.5" rx="1" fill="${gold}" stroke="${goldStroke}" stroke-width="0.6"/>`;
+    } else {
+      g += `<rect x="142" y="${topMetalY - 3.5}" width="${214 - 142}" height="3.5" rx="1" fill="${gold}" stroke="${goldStroke}" stroke-width="0.6"/>`;
+    }
+    g += `<rect x="146" y="${botMetalY}" width="${210 - 146}" height="3.5" rx="1" fill="${gold}" stroke="${goldStroke}" stroke-width="0.6"/>`;
+
+    // 1st Hole Pad (254..346)
+    const pthPlatedNow = snap.pthHasSeed || snap.pthHasPlated;
+    if (snap.hasThroughHole && !snap.hasResinPlug && pthPlatedNow) {
+      const wallT = snap.pthHasPlated ? platedCuH : 2.5;
+      g += `<rect x="254" y="${topMetalY - 3.5}" width="${holeL + wallT - 254}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="${holeR - wallT}" y="${topMetalY - 3.5}" width="${346 - (holeR - wallT)}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="254" y="${botMetalY}" width="${holeL + wallT - 254}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="${holeR - wallT}" y="${botMetalY}" width="${386 - 40 - (holeR - wallT)}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="${holeL + wallT}" y="${topMetalY - 3.5}" width="2.2" height="${(botMetalY + 3.5) - (topMetalY - 3.5)}" fill="${gold}"/>`;
+      g += `<rect x="${holeR - wallT - 2.2}" y="${topMetalY - 3.5}" width="2.2" height="${(botMetalY + 3.5) - (topMetalY - 3.5)}" fill="${gold}"/>`;
+    } else if (snap.hasThroughHole && snap.hasResinPlug && !snap.hasCapPlate) {
+      const wallT = pthPlatedNow ? (snap.pthHasPlated ? platedCuH : 2.5) : 0;
+      g += `<rect x="254" y="${topMetalY - 3.5}" width="${holeL + wallT - 254}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="${holeR - wallT}" y="${topMetalY - 3.5}" width="${346 - (holeR - wallT)}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="254" y="${botMetalY}" width="${holeL + wallT - 254}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="${holeR - wallT}" y="${botMetalY}" width="${346 - (holeR - wallT)}" height="3.5" fill="${gold}"/>`;
+    } else {
+      g += `<rect x="254" y="${topMetalY - 3.5}" width="${346 - 254}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="254" y="${botMetalY}" width="${346 - 254}" height="3.5" fill="${gold}"/>`;
+    }
+
+    // 2nd Hole Pad / Sub-Board N Hole Pad (378..468)
+    const pth2PlatedNow = snap.pth2HasSeed || snap.pth2HasPlated;
+    if (snap.hasSecondHole && pth2PlatedNow) {
+      const wallT2 = snap.pth2HasPlated ? platedCuH : 2.5;
+      g += `<rect x="378" y="${topMetalY - 3.5}" width="${hole2L + wallT2 - 378}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="${hole2R - wallT2}" y="${topMetalY - 3.5}" width="${468 - (hole2R - wallT2)}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="378" y="${botMetalY}" width="${hole2L + wallT2 - 378}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="${hole2R - wallT2}" y="${botMetalY}" width="${468 - (hole2R - wallT2)}" height="3.5" fill="${gold}"/>`;
+      g += `<rect x="${hole2L + wallT2}" y="${topMetalY - 3.5}" width="2.2" height="${(botMetalY + 3.5) - (topMetalY - 3.5)}" fill="${gold}"/>`;
+      g += `<rect x="${hole2R - wallT2 - 2.2}" y="${topMetalY - 3.5}" width="2.2" height="${(botMetalY + 3.5) - (topMetalY - 3.5)}" fill="${gold}"/>`;
+    } else if (!snap.isMultilayer && nHasHole) {
+      if (!nPlugged && !nHasCap) {
+        g += `<rect x="378" y="${botMetalY}" width="${nHoleL + nWallT - 378}" height="3.5" fill="${gold}"/>`;
+        g += `<rect x="${nHoleR - nWallT}" y="${botMetalY}" width="${468 - (nHoleR - nWallT)}" height="3.5" fill="${gold}"/>`;
+      } else {
+        g += `<rect x="378" y="${botMetalY}" width="${468 - 378}" height="3.5" fill="${gold}"/>`;
+      }
+    }
+  }
+
+  /* --- 9. SILKSCREEN LEGEND --- */
+  if (snap.hasSilkscreen) {
+    g += `<rect x="70" y="${topMetalY - maskH - 7}" width="26" height="7" rx="1" fill="#ffffff" stroke="#94a3b8" stroke-width="0.5"/>`;
+    g += `<text x="83" y="${topMetalY - maskH - 1.5}" text-anchor="middle" fill="#0f172a" font-size="6.5" font-weight="900">U1</text>`;
+    if (!snap.hasSecondHole) {
+      g += `<rect x="410" y="${topMetalY - maskH - 7}" width="26" height="7" rx="1" fill="#ffffff" stroke="#94a3b8" stroke-width="0.5"/>`;
+      g += `<text x="423" y="${topMetalY - maskH - 1.5}" text-anchor="middle" fill="#0f172a" font-size="6.5" font-weight="900">C1</text>`;
+    }
+  }
+
+  /* --- 10. ACTIVE PROCESS CALLOUT & VISUAL EFFECTS OVERLAY --- */
+  g += renderStepActionOverlay(snap, {
+    boardLeft, boardRight, cy, coreTopY, coreBotY, holeCx, hole2Cx, bViaCx, topMetalY, botMetalY, innerCuTopY: viaTargetTopY, textMain
+  });
+
+  g += `</g>`; // End scaled inner group
+  g += `</g>`; // End card group
+  return g;
+}
+
+/**
+ * Adds dynamic visual cues for the specific operation happening at `snap.activeAction`
+ * (e.g., laser beam, drill bit, plasma glow, etching arrows, AOI scan beam)
+ */
+function renderStepActionOverlay(snap, geom) {
+  const { cy, coreTopY, coreBotY, holeCx, hole2Cx, bViaCx, topMetalY, botMetalY, innerCuTopY } = geom;
+  let ov = '';
+
+  const targetDrillX = (snap.activeHoleTarget === 2 && snap.hasSecondHole) ? hole2Cx : holeCx;
+
+  switch (snap.activeAction) {
+    case 'lamination':
+    case 'rcc_buildup': {
+      const dielName = snap.buildupType === 'RCC' ? (snap.isSapMode ? 'ABF 增層膜' : 'RCC 無玻纖增層膜') : 'PP 半固化片';
+      const lamMsg = ((snap.buildupCount || 1) >= 2 || snap.buriedHole || snap.buriedCoreLaserVia || snap.isMultiCore)
+        ? `🥞 增層壓合完成：上下疊合 ${dielName} 與全新外層銅箔（原 Core 雷射孔/塞孔與線路轉為內埋層）`
+        : `🥞 壓合增層 (${dielName} + 外層銅箔)：由雙面 Core 轉為 4L 多層結構`;
+      ov += `<text x="260" y="19" text-anchor="middle" fill="#34d399" font-size="10.5" font-weight="800">${lamMsg}</text>`;
+      // Hot-press downward & upward arrows indicating lamination
+      [110, 260, 410].forEach(ax => {
+        ov += `<path d="M ${ax - 6} ${topMetalY - 14} L ${ax} ${topMetalY - 4} L ${ax + 6} ${topMetalY - 14}" fill="none" stroke="#34d399" stroke-width="2"/>`;
+        ov += `<path d="M ${ax - 6} ${botMetalY + 14} L ${ax} ${botMetalY + 4} L ${ax + 6} ${botMetalY + 14}" fill="none" stroke="#34d399" stroke-width="2"/>`;
+      });
+      break;
+    }
+
+    case 'oxide':
+      ov += `<text x="260" y="20" text-anchor="middle" fill="#d97706" font-size="10.5" font-weight="800">🟫 棕化 / 黑化粗化處理 (Oxide)：微蝕銅面形成有機金屬結晶，提升後續壓合抓附力</text>`;
+      break;
+
+    case 'inner_dfr':
+    case 'outer_dfr':
+      ov += `<text x="260" y="20" text-anchor="middle" fill="#60a5fa" font-size="10.5" font-weight="800">🟦 乾膜壓膜與曝光顯影 (DFR Photo)：保護欲保留的線路區與導通孔環</text>`;
+      break;
+
+    case 'laser_drill':
+      if (!snap.isMultilayer && !snap.isMultiCore) {
+        if (snap.laserViaMode === 'xvia') {
+          // Core Double-Sided Laser X-Via: Top + Bottom opposing laser beams meeting at cy!
+          ov += `<polygon points="${bViaCx - 6},8 ${bViaCx + 6},8 ${bViaCx + 14},${cy} ${bViaCx - 14},${cy}" fill="#a855f7" opacity="0.34"/>`;
+          ov += `<line x1="${bViaCx}" y1="6" x2="${bViaCx}" y2="${cy}" stroke="#d8b4fe" stroke-width="2.5" stroke-dasharray="4,3"/>`;
+          ov += `<polygon points="${bViaCx - 6},234 ${bViaCx + 6},234 ${bViaCx + 14},${cy} ${bViaCx - 14},${cy}" fill="#a855f7" opacity="0.34"/>`;
+          ov += `<line x1="${bViaCx}" y1="236" x2="${bViaCx}" y2="${cy}" stroke="#d8b4fe" stroke-width="2.5" stroke-dasharray="4,3"/>`;
+          ov += `<text x="260" y="18" text-anchor="middle" fill="#c084fc" font-size="10.5" font-weight="800">⚡ Core 雙面對鑽雷射 (X-Via)：上下雷射對鑽於核心層中央交會成沙漏孔</text>`;
+        } else {
+          // Core Single-Sided Laser Via: Top laser beam penetrating Core down to bottom copper foil (coreBotY)!
+          ov += `<polygon points="${bViaCx - 6},8 ${bViaCx + 6},8 ${bViaCx + 14},${coreBotY} ${bViaCx - 14},${coreBotY}" fill="#a855f7" opacity="0.34"/>`;
+          ov += `<line x1="${bViaCx}" y1="6" x2="${bViaCx}" y2="${coreBotY}" stroke="#d8b4fe" stroke-width="2.5" stroke-dasharray="4,3"/>`;
+          ov += `<text x="260" y="18" text-anchor="middle" fill="#c084fc" font-size="10.5" font-weight="800">⚡ Core 單面雷射鑽孔 (Single-Sided μVia)：燒蝕 Core 核心層直達底層銅箔</text>`;
+        }
+      } else {
+        // Multilayer Buildup Laser Blind Via (and embedded Die Cu Pillar if present)
+        ov += `<polygon points="${bViaCx - 6},8 ${bViaCx + 6},8 ${bViaCx + 22},${innerCuTopY} ${bViaCx - 22},${innerCuTopY}" fill="#a855f7" opacity="0.32"/>`;
+        ov += `<line x1="${bViaCx}" y1="6" x2="${bViaCx}" y2="${innerCuTopY}" stroke="#d8b4fe" stroke-width="2.5" stroke-dasharray="4,3"/>`;
+        if (snap.hasEmbeddedComp && snap.isEmbeddedEncapsulated) {
+          ov += `<polygon points="413,8 425,8 431,${innerCuTopY + 14} 407,${innerCuTopY + 14}" fill="#f43f5e" opacity="0.35"/>`;
+          ov += `<line x1="419" y1="6" x2="419" y2="${innerCuTopY + 14}" stroke="#fda4af" stroke-width="2.5" stroke-dasharray="4,3"/>`;
+          ov += `<text x="290" y="18" text-anchor="middle" fill="#c084fc" font-size="10.5" font-weight="800">⚡ 雷射盲孔開窗 (對準內層銅墊 &amp; 內埋晶片 Cu Pillar)</text>`;
+        } else {
+          ov += `<text x="${bViaCx}" y="18" text-anchor="middle" fill="#c084fc" font-size="10.5" font-weight="800">⚡ Laser Beam (μVia)</text>`;
+        }
+      }
+      break;
+
+    case 'multicore_lam':
+      ov += `<text x="260" y="19" text-anchor="middle" fill="#34d399" font-size="10.5" font-weight="800">🥞 多芯板對位疊合壓合 (Core 1 + 黏合層 PP + Core 2)</text>`;
+      break;
+
+    case 'subboard_start_n':
+      ov += `<text x="260" y="19" text-anchor="middle" fill="#a78bfa" font-size="10.5" font-weight="800">🔄 已將「子板 M」封存待命，現在開始獨立設計「子板 N」製程</text>`;
+      break;
+
+    case 'mn_sub_lam':
+      ov += `<text x="260" y="19" text-anchor="middle" fill="#f472b6" font-size="10.5" font-weight="800">🧩 M+N 兩板對接壓合：上層「子板 M」+ 中間 Bonding PP + 下層「子板 N」結合</text>`;
+      [110, 260, 410].forEach(ax => {
+        ov += `<path d="M ${ax - 6} ${topMetalY - 14} L ${ax} ${topMetalY - 4} L ${ax + 6} ${topMetalY - 14}" fill="none" stroke="#f472b6" stroke-width="2"/>`;
+        ov += `<path d="M ${ax - 6} ${botMetalY + 14} L ${ax} ${botMetalY + 4} L ${ax + 6} ${botMetalY + 14}" fill="none" stroke="#f472b6" stroke-width="2"/>`;
+      });
+      break;
+
+    case 'cavity_embed':
+      ov += `<path d="M 300 12 L 300 76" stroke="#fb7185" stroke-width="2.5" stroke-dasharray="4,2"/>`;
+      ov += `<text x="260" y="19" text-anchor="middle" fill="#fb7185" font-size="10.5" font-weight="800">🎯 基板挖槽 (Cavity) 並貼裝內埋主動/被動元件 (IC Die / MLCC)</text>`;
+      break;
+
+    case 'sap_pattern_plate':
+      ov += `<text x="260" y="19" text-anchor="middle" fill="#f59e0b" font-size="10.5" font-weight="800">⚡ mSAP 圖形電鍍：於乾膜溝槽內垂直長出高精密細線路並退膜</text>`;
+      break;
+
+    case 'sap_flash_etch':
+      ov += `<text x="260" y="19" text-anchor="middle" fill="#fb7185" font-size="10.5" font-weight="800">✨ 閃蝕 (Flash Etch)：快速咬除線間 1.5μm 超薄化銅/底銅完成獨立細線路</text>`;
+      break;
+
+    case 'mech_drill':
+      // Drill bit indicator inside the newly drilled through hole (1st or 2nd, or both if simultaneousDualDrill!)
+      ov += `<line x1="${targetDrillX}" y1="10" x2="${targetDrillX}" y2="250" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="5,3"/>`;
+      ov += `<polygon points="${targetDrillX - 16},14 ${targetDrillX + 16},14 ${targetDrillX},34" fill="#f59e0b" opacity="0.85"/>`;
+      if (snap.simultaneousDualDrill && snap.hasSecondHole) {
+        ov += `<line x1="${hole2Cx}" y1="10" x2="${hole2Cx}" y2="250" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="5,3"/>`;
+        ov += `<polygon points="${hole2Cx - 16},14 ${hole2Cx + 16},14 ${hole2Cx},34" fill="#f59e0b" opacity="0.85"/>`;
+        ov += `<text x="362" y="12" text-anchor="middle" fill="#fbbf24" font-size="10.5" font-weight="800">🔩 CNC 機械鑽孔：同時鑽出「欲塞孔通孔」與「不塞孔通孔」</text>`;
+      } else {
+        ov += `<text x="${targetDrillX}" y="12" text-anchor="middle" fill="#fbbf24" font-size="10.5" font-weight="800">🔩 ${snap.activeHoleTarget === 2 ? '二次鑽孔 (新增未塞孔通孔)' : 'CNC 機械鑽孔貫穿'}</text>`;
+      }
+      break;
+
+    case 'desmear':
+      // Pink plasma glow around holes
+      if (snap.hasLaserVia) {
+        const lvGlowCy = snap.isMultilayer ? (innerCuTopY - 12) : cy;
+        ov += `<circle cx="${bViaCx}" cy="${lvGlowCy}" r="26" fill="#ec4899" opacity="0.22"/>`;
+      }
+      if (snap.hasThroughHole) {
+        ov += `<circle cx="${holeCx}" cy="142" r="34" fill="#ec4899" opacity="0.22"/>`;
+      }
+      if (snap.hasSecondHole) {
+        ov += `<circle cx="${hole2Cx}" cy="142" r="34" fill="#ec4899" opacity="0.22"/>`;
+      }
+      ov += `<text x="265" y="22" text-anchor="middle" fill="#f472b6" font-size="10.5" font-weight="800">✨ Plasma / 除膠渣清潔孔壁與底部</text>`;
+      break;
+
+    case 'inner_etch':
+    case 'outer_etch':
+      ov += `<text x="260" y="22" text-anchor="middle" fill="#f87171" font-size="10.5" font-weight="800">💧 藥水蝕刻移除無保護裸銅並剝除乾膜</text>`;
+      break;
+
+    case 'panel_plate':
+      ov += `<text x="260" y="22" text-anchor="middle" fill="#fb923c" font-size="10.5" font-weight="800">⚡ ${(snap.hasSecondHole && !snap.selectivePlugFlow) ? '二次電鍍導通新鑽通孔 + 表面加厚' : (snap.hasCapPlate ? 'Cap Plating 蓋帽電鍍封平塞孔頂部' : '電鍍加厚孔壁銅 + 雷射孔實心填銅 (Via Fill)')}</text>`;
+      break;
+
+    case 'resin_plug':
+      if (snap.plugMode === 'mask_only' || (snap.hasSelectiveMask && !snap.hasResinPlug)) {
+        // Selective Masking Only step: highlight masking shield placed over Hole 2
+        ov += `<path d="M ${hole2Cx - 12} 14 L ${hole2Cx} 26 L ${hole2Cx + 12} 14" fill="none" stroke="#f472b6" stroke-width="2.5"/>`;
+        ov += `<text x="290" y="13" text-anchor="middle" fill="#f472b6" font-size="10.5" font-weight="800">🛡️ 選擇性塞孔遮蔽：以擋片/乾膜遮住右側通孔，保留左側通孔待塞</text>`;
+      } else if (snap.hasSelectiveMask) {
+        // Selective Plugging (Mask + Plug): squeegee pushes resin into Hole 1 while Hole 2 is masked
+        ov += `<path d="M ${holeCx - 14} 16 L ${holeCx} 30 L ${holeCx + 14} 16" fill="none" stroke="#cbd5e1" stroke-width="2.5"/>`;
+        ov += `<text x="290" y="13" text-anchor="middle" fill="#f472b6" font-size="10.5" font-weight="800">🧪 選擇性塞孔：左孔灌入樹脂微凸，右孔由遮蔽擋片保護維持空孔</text>`;
+      } else {
+        // Standard all-hole plugging
+        ov += `<path d="M ${holeCx - 14} 16 L ${holeCx} 30 L ${holeCx + 14} 16" fill="none" stroke="#cbd5e1" stroke-width="2.5"/>`;
+        ov += `<text x="${holeCx}" y="13" text-anchor="middle" fill="#e2e8f0" font-size="10.5" font-weight="800">🧪 真空樹脂塞孔與烘烤 (孔口微凸)</text>`;
+      }
+      break;
+
+    case 'planar_grind':
+      // Ceramic grinding roller indicator across the top surface
+      ov += `<line x1="90" y1="${topMetalY - 6}" x2="430" y2="${topMetalY - 6}" stroke="#2dd4bf" stroke-width="2.2" stroke-dasharray="6,4"/>`;
+      ov += `<circle cx="${holeCx - 24}" cy="${topMetalY - 16}" r="10" fill="none" stroke="#14b8a6" stroke-width="2.2" stroke-dasharray="4,2"/>`;
+      ov += `<circle cx="${holeCx + 24}" cy="${topMetalY - 16}" r="10" fill="none" stroke="#14b8a6" stroke-width="2.2" stroke-dasharray="4,2"/>`;
+      ov += `<text x="260" y="20" text-anchor="middle" fill="#2dd4bf" font-size="10.5" font-weight="800">⚙️ 陶瓷滾輪刷磨平坦化 (去除突出樹脂帽頭與銅瘤)</text>`;
+      break;
+
+    case 'aoi_test':
+      // Cyan optical scanner beam
+      ov += `<polygon points="260,8 140,${topMetalY} 380,${topMetalY}" fill="#06b6d4" opacity="0.18"/>`;
+      ov += `<circle cx="260" cy="12" r="7" fill="#06b6d4"/>`;
+      ov += `<text x="260" y="28" text-anchor="middle" fill="#22d3ee" font-size="10.5" font-weight="800">👁️ AOI 光學鏡頭掃描線路與孔環</text>`;
+      break;
+
+    default:
+      break;
+  }
+
+  // If currently fabricating Sub-Board N while Sub-Board M is archived, show a mini pip indicator of archived Sub-Board M!
+  if (snap.mnPhase === 'N' && snap.savedSubBoardM) {
+    const sm = snap.savedSubBoardM;
+    const smFeat = sm.hasResinPlug ? '含塞孔' : ((sm.hasThroughHole || sm.buriedHole) ? '含通孔' : '已完成');
+    ov += `<rect x="356" y="25" width="152" height="22" rx="5" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="1"/>`;
+    ov += `<text x="432" y="39" text-anchor="middle" fill="#c4b5fd" font-size="8.5" font-weight="700">📦 已封存子板 M (${sm.isPtfe ? 'PTFE' : 'FR4'}・${smFeat})</text>`;
+  }
+
+  // Feature Callout Labels at bottom of cross-section
+  if (snap.isMNSubBoard && snap.subBoardM && snap.subBoardN) {
+    const sm = snap.subBoardM;
+    const sn = snap.subBoardN;
+    if (sm.hasThroughHole || sm.buriedHole) {
+      const mPlugged = Boolean(sm.hasResinPlug || sm.buriedHole?.hasResinPlug);
+      ov += `<text x="178" y="246" text-anchor="middle" fill="#a78bfa" font-size="8.5" font-weight="700">${mPlugged ? '子板M塞孔' : '子板M導通孔'}</text>`;
+    }
+    if (sn.hasThroughHole || sn.buriedHole) {
+      const nPlugged = Boolean(sn.hasResinPlug || sn.buriedHole?.hasResinPlug);
+      ov += `<text x="424" y="246" text-anchor="middle" fill="#f472b6" font-size="8.5" font-weight="700">${nPlugged ? '子板N塞孔' : '子板N導通孔'}</text>`;
+    }
+  }
+  if (snap.hasLaserVia) {
+    let lvCallout = '雷射盲孔 (μVia)';
+    if (!snap.isMultilayer && !snap.isMNSubBoard) {
+      lvCallout = snap.laserViaMode === 'xvia'
+        ? (snap.viaFilled && snap.laserViaHasPlated ? 'Core X-Via (實心填銅)' : 'Core 雙面對鑽孔 (X-Via)')
+        : (snap.viaFilled && snap.laserViaHasPlated ? 'Core 單面雷射填孔' : 'Core 單面雷射孔 (μVia)');
+    } else if ((snap.buildupCount || 1) >= 2) {
+      lvCallout = '外層二階盲孔 (μVia 2)';
+    }
+    ov += `<text x="${bViaCx}" y="246" text-anchor="middle" fill="#a855f7" font-size="9" font-weight="700">${lvCallout}</text>`;
+  } else if (snap.buriedCoreLaserVia) {
+    ov += `<text x="${bViaCx}" y="246" text-anchor="middle" fill="#c084fc" font-size="9" font-weight="700">${snap.buriedCoreLaserVia.mode === 'xvia' ? '內埋 Core X-Via' : '內埋 Core 雷射孔'}</text>`;
+  } else if ((snap.buildupCount || 1) >= 2 && snap.buriedBuildup?.hasLaserVia) {
+    ov += `<text x="${bViaCx}" y="246" text-anchor="middle" fill="#c084fc" font-size="9" font-weight="700">內埋盲孔 (Buried μVia)</text>`;
+  }
+  if (snap.hasThroughHole) {
+    const holeLabel = snap.hasResinPlug
+      ? (snap.hasCapPlate ? '樹脂塞孔+蓋帽 (VIPPO)' : (snap.isPlanarized ? '樹脂塞孔已刷磨平整' : '樹脂塞孔 (Resin Plug)'))
+      : ((snap.pthHasSeed || snap.pthHasPlated) ? (snap.isMNSubBoard ? 'M+N貫穿孔(PTH)' : '導通孔 (PTH)') : '未電鍍鑽孔');
+    ov += `<text x="${holeCx}" y="246" text-anchor="middle" fill="${snap.hasResinPlug ? '#cbd5e1' : '#f59e0b'}" font-size="9" font-weight="700">${holeLabel}</text>`;
+  } else if (snap.buriedHole) {
+    const bhLabel = snap.buriedHole.hasResinPlug
+      ? (snap.buriedHole.hasCapPlate ? '內埋塞孔+蓋帽 (Buried VIPPO)' : '內埋樹脂塞孔 (Buried Plug)')
+      : '內埋導通孔 (Buried Via)';
+    ov += `<text x="${holeCx}" y="246" text-anchor="middle" fill="#cbd5e1" font-size="9" font-weight="700">${bhLabel}</text>`;
+  }
+  if (snap.hasSecondHole) {
+    let hole2Label = '二次鑽孔 (未電鍍)';
+    let hole2Color = '#38bdf8';
+    if (snap.hasSelectiveMask) {
+      hole2Label = '遮蔽不塞孔 (Masked PTH)';
+      hole2Color = '#f472b6';
+    } else if (snap.selectivePlugFlow) {
+      hole2Label = (snap.pth2HasSeed || snap.pth2HasPlated) ? '未塞孔導通孔 (Open PTH)' : '未塞孔鑽孔';
+    } else if (snap.pth2HasSeed || snap.pth2HasPlated) {
+      hole2Label = '二次鑽鍍通孔 (Open PTH)';
+    }
+    ov += `<text x="${hole2Cx}" y="246" text-anchor="middle" fill="${hole2Color}" font-size="9" font-weight="700">${hole2Label}</text>`;
+  } else if (snap.hasEmbeddedComp) {
+    const embX = snap.isEmbeddedEncapsulated ? 419 : 300;
+    const embLabel = snap.isEmbeddedEncapsulated ? '內埋晶片 (Embedded Die)' : '挖槽內埋元件 (Cavity)';
+    ov += `<text x="${embX}" y="246" text-anchor="middle" fill="#fb7185" font-size="9" font-weight="700">${embLabel}</text>`;
+  } else if (snap.isSapMode && snap.sapPatternPlated) {
+    ov += `<text x="412" y="246" text-anchor="middle" fill="#f59e0b" font-size="9" font-weight="700">${snap.sapSeedStripped ? 'mSAP 獨立細線路 (L/S≤15μm)' : '圖形電鍍細線 (未閃蝕底銅)'}</text>`;
+  } else if ((snap.buildupCount || 1) >= 2) {
+    ov += `<text x="405" y="246" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">內埋細線路 + 新增壓合外層</text>`;
+  }
+
+  return ov;
+}
+
+/**
+ * Helper to determine M+N Sub-Board phase badge for any step in a flow that uses subboard_start_n or mn_sub_lam
+ */
+function getStepMNPhaseInfo(steps, targetIdx) {
+  const hasMN = steps.some(s => s.type === 'subboard_start_n' || s.type === 'mn_sub_lam');
+  if (!hasMN) return null;
+  let phase = 'M';
+  for (let i = 0; i <= targetIdx; i++) {
+    const t = steps[i].type;
+    if (t === 'subboard_start_n') {
+      if (i === targetIdx) return { label: '切換子板N', color: '#8b5cf6' };
+      phase = 'N';
+    } else if (t === 'mn_sub_lam') {
+      if (i === targetIdx) return { label: 'M+N對壓', color: '#ec4899' };
+      phase = 'MN_BONDED';
+    }
+  }
+  if (phase === 'M') return { label: '子板 M', color: '#0ea5e9' };
+  if (phase === 'N') return { label: '子板 N', color: '#8b5cf6' };
+  return { label: 'M+N合板', color: '#10b981' };
+}
+
+/* ============================================================================
+   6. SVG FLOWCHART RENDERER (製程節點方塊流程圖產生器)
+   ============================================================================ */
+function generateFlowchartSVG(steps, activeIdx) {
+  const isLight = appState.lightTheme;
+  const cols = Math.min(5, Math.max(3, Math.ceil(Math.sqrt(steps.length * 1.4))));
+  const rows = Math.ceil(steps.length / cols);
+
+  const cardW = 196;
+  const cardH = 68;
+  const gapX = 38;
+  const gapY = 36;
+  const padX = 28;
+  const padY = 24;
+
+  const svgW = padX * 2 + cols * cardW + (cols - 1) * gapX;
+  const svgH = padY * 2 + rows * cardH + (rows - 1) * gapY;
+
+  const bgFill = isLight ? '#ffffff' : '#0f172a';
+  const nodeBg = isLight ? '#f8fafc' : '#1e293b';
+  const nodeBorder = isLight ? '#cbd5e1' : '#334155';
+  const textMain = isLight ? '#0f172a' : '#f8fafc';
+  const textSub = isLight ? '#475569' : '#94a3b8';
+  const arrowColor = isLight ? '#64748b' : '#64748b';
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', sans-serif;">`;
+  svg += `<defs>
+    <marker id="fc-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="${arrowColor}"/>
+    </marker>
+    <marker id="fc-arrow-active" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0ea5e9"/>
+    </marker>
+  </defs>`;
+
+  svg += `<rect width="100%" height="100%" rx="10" fill="${bgFill}"/>`;
+
+  // Compute node coordinates (Serpentine snake layout so arrows never cross long distances!)
+  const coords = steps.map((_, idx) => {
+    const r = Math.floor(idx / cols);
+    const cInRow = idx % cols;
+    const c = (r % 2 === 0) ? cInRow : (cols - 1 - cInRow);
+    const x = padX + c * (cardW + gapX);
+    const y = padY + r * (cardH + gapY);
+    return { x, y, r, c };
+  });
+
+  // Draw connecting arrows
+  for (let i = 0; i < steps.length - 1; i++) {
+    const p1 = coords[i];
+    const p2 = coords[i + 1];
+    const isPassed = i < activeIdx;
+    const stroke = isPassed ? '#0ea5e9' : arrowColor;
+    const marker = isPassed ? 'url(#fc-arrow-active)' : 'url(#fc-arrow)';
+
+    if (p1.r === p2.r) {
+      // Same row (left-to-right or right-to-left)
+      if (p2.x > p1.x) {
+        svg += `<line x1="${p1.x + cardW}" y1="${p1.y + cardH / 2}" x2="${p2.x - 4}" y2="${p2.y + cardH / 2}" stroke="${stroke}" stroke-width="2.2" marker-end="${marker}"/>`;
+      } else {
+        svg += `<line x1="${p1.x}" y1="${p1.y + cardH / 2}" x2="${p2.x + cardW + 4}" y2="${p2.y + cardH / 2}" stroke="${stroke}" stroke-width="2.2" marker-end="${marker}"/>`;
+      }
+    } else {
+      // Down to next row
+      svg += `<line x1="${p1.x + cardW / 2}" y1="${p1.y + cardH}" x2="${p2.x + cardW / 2}" y2="${p2.y - 4}" stroke="${stroke}" stroke-width="2.2" marker-end="${marker}"/>`;
+    }
+  }
+
+  // Draw step node cards
+  steps.forEach((step, idx) => {
+    const { x, y } = coords[idx];
+    const def = STEP_LIBRARY[step.type] || STEP_LIBRARY.custom_step;
+    const isActive = idx === activeIdx;
+    const borderCol = isActive ? '#0ea5e9' : nodeBorder;
+    const sw = isActive ? 2.8 : 1.2;
+
+    svg += `<g class="fc-node" transform="translate(${x}, ${y})" style="cursor:pointer" onclick="selectStep(${idx})">`;
+    if (isActive) {
+      svg += `<rect x="-3" y="-3" width="${cardW + 6}" height="${cardH + 6}" rx="11" fill="none" stroke="#0ea5e9" stroke-width="2" opacity="0.4"/>`;
+    }
+    svg += `<rect x="0" y="0" width="${cardW}" height="${cardH}" rx="8" fill="${nodeBg}" stroke="${borderCol}" stroke-width="${sw}"/>`;
+    // Top color bar
+    svg += `<rect x="0" y="0" width="${cardW}" height="5" rx="3" fill="${def.color}"/>`;
+    // Step badge
+    svg += `<rect x="10" y="13" width="22" height="20" rx="5" fill="${def.color}"/>`;
+    svg += `<text x="21" y="27" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="800">${idx + 1}</text>`;
+    // Step Title
+    const mnBadge = getStepMNPhaseInfo(steps, idx);
+    svg += `<text x="38" y="27" fill="${textMain}" font-size="12.5" font-weight="800">${escapeXml(truncateStr(step.title, mnBadge ? 9 : 12))}</text>`;
+    if (mnBadge) {
+      svg += `<rect x="${cardW - 56}" y="13" width="48" height="17" rx="4" fill="${mnBadge.color}" opacity="0.22"/>`;
+      svg += `<text x="${cardW - 32}" y="25" text-anchor="middle" fill="${mnBadge.color}" font-size="9" font-weight="800">${escapeXml(mnBadge.label)}</text>`;
+    }
+    // Parameter Pill
+    svg += `<rect x="10" y="40" width="${cardW - 20}" height="20" rx="4" fill="${isLight ? '#e2e8f0' : '#0f172a'}"/>`;
+    svg += `<text x="16" y="54" fill="${textSub}" font-size="10.5" font-weight="600">${escapeXml(truncateStr(step.param || step.note, 22))}</text>`;
+    svg += `</g>`;
+  });
+
+  svg += `</svg>`;
+  return svg;
+}
+
+/* ============================================================================
+   7. SINGLE / COMPARISON CROSS-SECTION SVG & STORYBOARD POSTER SVG
+   ============================================================================ */
+function generateSingleOrCompareCrossSectionSVG(snapshots, activeIdx) {
+  const isLight = appState.lightTheme;
+  const bgFill = isLight ? '#ffffff' : '#0f172a';
+  const comparePrev = document.getElementById('comparePrevCheckbox')?.checked && activeIdx > 0;
+  const curPhaseInfo = getStepMNPhaseInfo(appState.steps, activeIdx);
+
+  if (!comparePrev) {
+    const svgW = 820;
+    const svgH = 380;
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', sans-serif;">`;
+    svg += `<rect width="100%" height="100%" rx="12" fill="${bgFill}"/>`;
+    svg += buildCrossSectionGroupSVG(snapshots[activeIdx], 16, 16, svgW - 32, svgH - 32, {
+      isActive: true,
+      badgeText: curPhaseInfo ? `階段：${curPhaseInfo.label}` : '目前檢視站點',
+      badgeColor: curPhaseInfo ? curPhaseInfo.color : '#0ea5e9'
+    });
+    svg += `</svg>`;
+    return svg;
+  } else {
+    // Side-by-side comparison: Previous Step vs Current Step
+    const prevPhaseInfo = getStepMNPhaseInfo(appState.steps, activeIdx - 1);
+    const svgW = 1060;
+    const svgH = 370;
+    const cardW = 492;
+    const cardH = 338;
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', sans-serif;">`;
+    svg += `<rect width="100%" height="100%" rx="12" fill="${bgFill}"/>`;
+
+    // Left: Previous Step
+    svg += buildCrossSectionGroupSVG(snapshots[activeIdx - 1], 16, 16, cardW, cardH, {
+      isActive: false,
+      badgeText: prevPhaseInfo ? `上站：${prevPhaseInfo.label}` : '上一站結構',
+      badgeColor: prevPhaseInfo ? prevPhaseInfo.color : '#64748b'
+    });
+
+    // Center Arrow
+    svg += `<circle cx="${svgW / 2}" cy="${svgH / 2}" r="18" fill="#0ea5e9"/>`;
+    svg += `<text x="${svgW / 2}" y="${svgH / 2 + 5}" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="900">➔</text>`;
+
+    // Right: Current Step
+    svg += buildCrossSectionGroupSVG(snapshots[activeIdx], svgW - cardW - 16, 16, cardW, cardH, {
+      isActive: true,
+      badgeText: curPhaseInfo ? `本站：${curPhaseInfo.label}` : '本站變化後',
+      badgeColor: curPhaseInfo ? curPhaseInfo.color : '#10b981'
+    });
+
+    svg += `</svg>`;
+    return svg;
+  }
+}
+
+function generateStoryboardPosterSVG(snapshots) {
+  const isLight = appState.lightTheme;
+  const bgFill = isLight ? '#ffffff' : '#0b1120';
+  const textMain = isLight ? '#0f172a' : '#f8fafc';
+  const textSub = isLight ? '#475569' : '#94a3b8';
+
+  const cols = snapshots.length <= 4 ? 2 : 3;
+  const rows = Math.ceil(snapshots.length / cols);
+
+  const cardW = 440;
+  const cardH = 265;
+  const gapX = 28;
+  const gapY = 28;
+  const padX = 28;
+  const headerH = 74;
+  const footerH = 48;
+
+  const svgW = padX * 2 + cols * cardW + (cols - 1) * gapX;
+  const svgH = headerH + rows * cardH + (rows - 1) * gapY + footerH;
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', sans-serif;">`;
+  svg += `<rect width="100%" height="100%" fill="${bgFill}"/>`;
+
+  // Poster Title Banner
+  svg += `<text x="${padX}" y="36" fill="${textMain}" font-size="22" font-weight="800">PCB 製程流程與橫切面結構演進總覽圖 (Process &amp; Stackup Evolution)</text>`;
+  svg += `<text x="${padX}" y="58" fill="${textSub}" font-size="13">共 ${snapshots.length} 個製程步驟 ・ 自動推演各站銅層、介電層、盲孔/通孔與表面處理物理變化</text>`;
+
+  snapshots.forEach((snap, idx) => {
+    const r = Math.floor(idx / cols);
+    const c = idx % cols;
+    const x = padX + c * (cardW + gapX);
+    const y = headerH + r * (cardH + gapY);
+
+    svg += buildCrossSectionGroupSVG(snap, x, y, cardW, cardH, {
+      isActive: idx === appState.activeStepIndex
+    });
+
+    // Arrow to next card in same row
+    if (c < cols - 1 && idx < snapshots.length - 1) {
+      const ax = x + cardW + gapX / 2;
+      const ay = y + cardH / 2;
+      svg += `<circle cx="${ax}" cy="${ay}" r="11" fill="#0ea5e9"/>`;
+      svg += `<text x="${ax}" y="${ay + 4}" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="900">➔</text>`;
+    }
+  });
+
+  // Footer Legend inside Poster SVG so exported PNG/SVG is 100% self-contained!
+  const legY = svgH - 20;
+  const legends = [
+    ['#d97706', '基板銅 / 內外層銅'],
+    ['#f59e0b', '電鍍銅 / 孔壁與填孔銅'],
+    ['#84cc16', 'Core 核心絕緣層'],
+    ['#10b981', 'Prepreg / 增層介電質'],
+    ['#94a3b8', '樹脂塞孔油墨 (Resin Plug)'],
+    ['#3b82f6', '乾膜光阻 (DFR)'],
+    ['#059669', '防焊綠漆 (Solder Mask)'],
+    ['#fde047', '表面處理化金 (ENIG)']
+  ];
+  let lx = padX;
+  legends.forEach(([col, label]) => {
+    svg += `<rect x="${lx}" y="${legY - 10}" width="14" height="10" rx="2" fill="${col}"/>`;
+    svg += `<text x="${lx + 18}" y="${legY - 1}" fill="${textSub}" font-size="11.5" font-weight="600">${label}</text>`;
+    lx += 160;
+  });
+
+  svg += `</svg>`;
+  return svg;
+}
+
+/* ============================================================================
+   8. UI RENDERING & INTERACTION
+   ============================================================================ */
+function renderPaletteTabs() {
+  const container = document.getElementById('paletteTabs');
+  const allSteps = Object.values(STEP_LIBRARY);
+  container.innerHTML = CATEGORIES.map(cat => {
+    const count = cat.id === 'all'
+      ? allSteps.length
+      : allSteps.filter(s => s.cat === cat.id).length;
+    return `
+      <button class="palette-tab ${appState.selectedCategory === cat.id ? 'active' : ''}"
+              onclick="selectCategory('${cat.id}')">${cat.name} (${count})</button>
+    `;
+  }).join('');
+}
+
+function selectCategory(catId) {
+  appState.selectedCategory = catId;
+  renderPaletteTabs();
+  renderPaletteItems();
+}
+
+function renderPaletteItems() {
+  const container = document.getElementById('paletteItems');
+  const items = Object.values(STEP_LIBRARY).filter(item =>
+    appState.selectedCategory === 'all' || item.cat === appState.selectedCategory
+  );
+  container.innerHTML = items.map(item => {
+    const cleanLabel = item.defaultTitle.replace(/\s*\(.*?\)\s*/g, '').trim();
+    const baseChip = `
+      <div class="palette-chip" onclick="addStepFromPalette('${item.type}')" title="${item.defaultTitle}：${item.desc}">
+        <span style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${item.color};flex-shrink:0;"></span>
+          <span style="overflow:hidden;text-overflow:ellipsis;">${item.type === 'laser_drill' ? '雷射鑽孔 (單面)' : cleanLabel}</span>
+        </span>
+        <span class="plus">+</span>
+      </div>
+    `;
+    if (item.type === 'laser_drill') {
+      return baseChip + `
+        <div class="palette-chip" onclick="addStepFromPalette('laser_drill', 'xvia')" title="雷射雙面對鑽 (Core X-Via)：上下雙面雷射對鑽貫穿 Core 核心層，於中央交會形成沙漏型 X-Via">
+          <span style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#c084fc;flex-shrink:0;"></span>
+            <span style="overflow:hidden;text-overflow:ellipsis;">雷射對鑽 (X-Via)</span>
+          </span>
+          <span class="plus">+</span>
+        </div>
+      `;
+    }
+    if (item.type === 'resin_plug') {
+      return baseChip + `
+        <div class="palette-chip" onclick="addStepFromPalette('resin_plug', 'selective')" title="選擇性樹脂塞孔 (Selective Plugging)：先以擋片/乾膜遮住不塞孔通孔，僅對指定通孔進行真空塞孔">
+          <span style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#ec4899;flex-shrink:0;"></span>
+            <span style="overflow:hidden;text-overflow:ellipsis;">選擇性塞孔 (遮孔+塞孔)</span>
+          </span>
+          <span class="plus">+</span>
+        </div>
+      `;
+    }
+    return baseChip;
+  }).join('');
+}
+
+function renderSequenceList() {
+  const listEl = document.getElementById('sequenceList');
+  const typeOptionsHtml = Object.values(STEP_LIBRARY).map(def =>
+    `<option value="${def.type}">${def.defaultTitle}</option>`
+  ).join('');
+
+  listEl.innerHTML = appState.steps.map((step, idx) => {
+    const def = STEP_LIBRARY[step.type] || STEP_LIBRARY.custom_step;
+    const isActive = idx === appState.activeStepIndex;
+    const mnPhaseInfo = getStepMNPhaseInfo(appState.steps, idx);
+    const phasePillHtml = mnPhaseInfo
+      ? `<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:800;margin-right:5px;background:${mnPhaseInfo.color}28;color:${mnPhaseInfo.color};border:1px solid ${mnPhaseInfo.color}66;">${mnPhaseInfo.label}</span>`
+      : '';
+    const isXViaStep = step.type === 'laser_drill' && (
+      step.laserMode === 'xvia' ||
+      `${step.title} ${step.param} ${step.note}`.toLowerCase().includes('x-via') ||
+      `${step.title} ${step.param} ${step.note}`.toLowerCase().includes('xvia') ||
+      `${step.title} ${step.param} ${step.note}`.includes('雙面') ||
+      `${step.title} ${step.param} ${step.note}`.includes('對鑽')
+    );
+    const laserModeRowHtml = step.type === 'laser_drill'
+      ? `
+          <div class="field-row">
+            <label>雷射孔型</label>
+            <select onchange="updateLaserMode(${idx}, this.value)">
+              <option value="single" ${!isXViaStep ? 'selected' : ''}>單面錐形雷射孔 (Single-Sided μVia)</option>
+              <option value="xvia" ${isXViaStep ? 'selected' : ''}>雙面對鑽 X-Via (Core 沙漏對鑽孔)</option>
+            </select>
+          </div>
+      `
+      : '';
+    const curPlugMode = step.type === 'resin_plug' ? getStepPlugMode(step) : 'all';
+    const plugModeRowHtml = step.type === 'resin_plug'
+      ? `
+          <div class="field-row">
+            <label>塞孔模式</label>
+            <select onchange="updatePlugMode(${idx}, this.value)">
+              <option value="all" ${curPlugMode === 'all' ? 'selected' : ''}>一般全孔塞孔 (All Through-Holes)</option>
+              <option value="selective" ${curPlugMode === 'selective' ? 'selected' : ''}>選擇性塞孔：遮住部分孔＋塞孔 (Selective Plug)</option>
+              <option value="mask_only" ${curPlugMode === 'mask_only' ? 'selected' : ''}>選擇性塞孔：僅先遮住部分的孔 (Mask Only)</option>
+            </select>
+          </div>
+      `
+      : '';
+    return `
+      <div class="step-item ${isActive ? 'active' : ''}"
+           draggable="true"
+           ondragstart="onDragStart(event, ${idx})"
+           ondragover="onDragOver(event)"
+           ondrop="onDrop(event, ${idx})"
+           onclick="selectStep(${idx})">
+        <div class="step-header">
+          <span class="drag-handle" title="拖拉調整順序">⋮⋮</span>
+          <div class="step-badge" style="background:${def.color}">${idx + 1}</div>
+          <div class="step-info">
+            <div class="step-title-row" id="step-title-display-${idx}">${phasePillHtml}${escapeHtml(step.title)}</div>
+            <div class="step-note-row" id="step-note-display-${idx}">${escapeHtml(step.param)} — ${escapeHtml(step.note)}</div>
+          </div>
+          <div class="step-actions">
+            <button class="icon-btn" onclick="moveStep(${idx}, -1, event)" title="上移">▲</button>
+            <button class="icon-btn" onclick="moveStep(${idx}, 1, event)" title="下移">▼</button>
+            <button class="icon-btn danger" onclick="deleteStep(${idx}, event)" title="刪除此站">✕</button>
+          </div>
+        </div>
+
+        <div class="step-editor" onclick="event.stopPropagation()">
+          <div class="field-row">
+            <label>物理算子</label>
+            <select onchange="updateStepField(${idx}, 'type', this.value)">
+              ${Object.values(STEP_LIBRARY).map(d =>
+                `<option value="${d.type}" ${d.type === step.type ? 'selected' : ''}>${d.defaultTitle}</option>`
+              ).join('')}
+            </select>
+          </div>
+          ${laserModeRowHtml}
+          ${plugModeRowHtml}
+          <div class="field-row">
+            <label>站點名稱</label>
+            <input type="text" value="${escapeHtml(step.title)}" oninput="updateStepField(${idx}, 'title', this.value)" />
+          </div>
+          <div class="field-row">
+            <label>關鍵參數</label>
+            <input type="text" value="${escapeHtml(step.param)}" placeholder="例如：CO2 80μm / X-Via 對鑽" oninput="updateStepField(${idx}, 'param', this.value)" />
+          </div>
+          <div class="field-row">
+            <label>製程說明</label>
+            <input type="text" value="${escapeHtml(step.note)}" oninput="updateStepField(${idx}, 'note', this.value)" />
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCanvasesOnly() {
+  const snapshots = simulateCrossSectionStates(appState.steps);
+  const idx = Math.min(appState.activeStepIndex, snapshots.length - 1);
+
+  document.getElementById('stepCounterText').textContent = `Step ${idx + 1} / ${snapshots.length}`;
+
+  if (appState.viewMode === 'dual') {
+    document.getElementById('flowchartSvgHolder').innerHTML = generateFlowchartSVG(appState.steps, idx);
+    document.getElementById('crossSectionSvgHolder').innerHTML = generateSingleOrCompareCrossSectionSVG(snapshots, idx);
+    const activeSnap = snapshots[idx];
+    document.getElementById('crossSectionHeaderTitle').textContent =
+      `🔬 第 ${idx + 1} 站橫切面物理結構：${activeSnap.stepTitle} (${activeSnap.stepParam})`;
+  } else {
+    document.getElementById('storyboardSvgHolder').innerHTML = generateStoryboardPosterSVG(snapshots);
+  }
+}
+
+function renderAll() {
+  renderSequenceList();
+  renderCanvasesOnly();
+}
+
+function selectStep(idx) {
+  appState.activeStepIndex = idx;
+  saveState();
+  renderAll();
+}
+
+function stepPrev() {
+  if (appState.activeStepIndex > 0) {
+    appState.activeStepIndex--;
+    saveState();
+    renderAll();
+    scrollToActiveStepInSidebar();
+  }
+}
+
+function stepNext() {
+  if (appState.activeStepIndex < appState.steps.length - 1) {
+    appState.activeStepIndex++;
+    saveState();
+    renderAll();
+    scrollToActiveStepInSidebar();
+  }
+}
+
+function toggleAutoPlay() {
+  const btn = document.getElementById('playBtn');
+  if (appState.autoPlayTimer) {
+    clearInterval(appState.autoPlayTimer);
+    appState.autoPlayTimer = null;
+    btn.textContent = '▶ 自動播放';
+    return;
+  }
+  if (appState.activeStepIndex >= appState.steps.length - 1) {
+    appState.activeStepIndex = 0;
+    renderAll();
+  }
+  btn.textContent = '⏸ 暫停播放';
+  appState.autoPlayTimer = setInterval(() => {
+    if (appState.activeStepIndex < appState.steps.length - 1) {
+      appState.activeStepIndex++;
+      renderAll();
+      scrollToActiveStepInSidebar();
+    } else {
+      clearInterval(appState.autoPlayTimer);
+      appState.autoPlayTimer = null;
+      btn.textContent = '▶ 自動播放';
+    }
+  }, 1100);
+}
+
+function scrollToActiveStepInSidebar() {
+  const listEl = document.getElementById('sequenceList');
+  const activeEl = listEl.querySelector('.step-item.active');
+  if (activeEl) {
+    activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function setViewMode(mode) {
+  appState.viewMode = mode;
+  document.getElementById('tabDual').classList.toggle('active', mode === 'dual');
+  document.getElementById('tabStoryboard').classList.toggle('active', mode === 'storyboard');
+  document.getElementById('dualViewContainer').style.display = mode === 'dual' ? 'flex' : 'none';
+  document.getElementById('storyboardViewContainer').style.display = mode === 'storyboard' ? 'flex' : 'none';
+  renderCanvasesOnly();
+}
+
+function toggleTheme() {
+  appState.lightTheme = !appState.lightTheme;
+  document.body.classList.toggle('light-theme', appState.lightTheme);
+  document.getElementById('themeBtn').innerHTML = appState.lightTheme
+    ? '<span>🌙 切換深色工程模式</span>'
+    : '<span>☀️ 切換白底報告模式</span>';
+  renderCanvasesOnly();
+}
+
+/* ============================================================================
+   9. DRAG AND DROP REORDERING
+   ============================================================================ */
+let draggedIndex = null;
+
+function onDragStart(e, idx) {
+  draggedIndex = idx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function onDrop(e, dropIdx) {
+  e.preventDefault();
+  if (draggedIndex === null || draggedIndex === dropIdx) return;
+  const movedItem = appState.steps.splice(draggedIndex, 1)[0];
+  appState.steps.splice(dropIdx, 0, movedItem);
+  appState.activeStepIndex = dropIdx;
+  draggedIndex = null;
+  saveState();
+  renderAll();
+}
+
+/* ============================================================================
+   10. TEXT SYNTAX QUICK PARSER (文字語法智慧解析器)
+   ============================================================================ */
+function openQuickSyntaxModal() {
+  document.getElementById('syntaxModal').classList.add('open');
+}
+
+function closeQuickSyntaxModal() {
+  document.getElementById('syntaxModal').classList.remove('open');
+}
+
+function inferStepTypeFromText(token) {
+  const t = token.toLowerCase();
+  if (t.includes('切換') && t.includes('n')) return 'subboard_start_n';
+  if (t.includes('開始子板n') || t.includes('製作子板n') || t.includes('start sub-board n')) return 'subboard_start_n';
+  if (t.includes('開料') || t.includes('基板') || t.includes('cut') || t.includes('ccl')) return 'substrate_cut';
+  if (t.includes('內層') && (t.includes('乾膜') || t.includes('曝光') || t.includes('dfr') || t.includes('photo'))) return 'inner_dfr';
+  if (t.includes('內層') && (t.includes('蝕刻') || t.includes('etch') || t.includes('des'))) return 'inner_etch';
+  if (t.includes('棕化') || t.includes('黑化') || t.includes('oxide')) return 'oxide';
+  if (t.includes('m+n') || t.includes('對接壓合') || t.includes('對壓') || t.includes('不對稱') || t.includes('混壓')) return 'mn_sub_lam';
+  if (t.includes('多芯') || t.includes('multicore') || t.includes('core壓合') || t.includes('多層core')) return 'multicore_lam';
+  if (t.includes('內埋') || t.includes('挖槽') || t.includes('cavity') || t.includes('embed') || t.includes('die')) return 'cavity_embed';
+  if (t.includes('rcc') || t.includes('無玻纖增層') || t.includes('薄膜壓合')) return 'rcc_buildup';
+  if (t.includes('壓合') || t.includes('增層') || t.includes('lam')) return 'lamination';
+  if (t.includes('雷射') || t.includes('盲孔') || t.includes('laser') || t.includes('uvia')) return 'laser_drill';
+  if (t.includes('機械鑽') || t.includes('鑽孔') || t.includes('通孔') || t.includes('drill')) return 'mech_drill';
+  if (t.includes('除膠') || t.includes('電漿') || t.includes('等離子') || t.includes('desmear') || t.includes('plasma')) return 'desmear';
+  if (t.includes('化學銅') || t.includes('沉銅') || t.includes('pth')) return 'pth_seed';
+  if (t.includes('塞孔') || t.includes('plug') || t.includes('樹脂塞')) return 'resin_plug';
+  if (t.includes('刷磨') || t.includes('研磨') || t.includes('平坦') || t.includes('整平') || t.includes('grind') || t.includes('planar')) return 'planar_grind';
+  if (t.includes('圖形電鍍') || t.includes('msap') || t.includes('sap') || t.includes('pattern plate')) return 'sap_pattern_plate';
+  if (t.includes('閃蝕') || t.includes('微分蝕刻') || t.includes('flash etch') || t.includes('咬除底銅')) return 'sap_flash_etch';
+  if (t.includes('電鍍') || t.includes('填孔') || t.includes('plate') || t.includes('fill')) return 'panel_plate';
+  if (t.includes('乾膜') || t.includes('曝光') || t.includes('dfr') || t.includes('photo')) return 'outer_dfr';
+  if (t.includes('蝕刻') || t.includes('去膜') || t.includes('etch')) return 'outer_etch';
+  if (t.includes('aoi') || t.includes('檢驗') || t.includes('檢測') || t.includes('電測') || t.includes('test')) return 'aoi_test';
+  if (t.includes('防焊') || t.includes('綠漆') || t.includes('mask')) return 'solder_mask';
+  if (t.includes('化金') || t.includes('表面處理') || t.includes('enig') || t.includes('osp') || t.includes('噴錫') || t.includes('化銀')) return 'surface_finish';
+  if (t.includes('文字') || t.includes('印刷') || t.includes('成型') || t.includes('silk')) return 'silkscreen';
+  return 'custom_step';
+}
+
+function applyQuickSyntax() {
+  const raw = document.getElementById('syntaxTextarea').value.trim();
+  if (!raw) return;
+  const tokens = raw.split(/->|➔|→|\n/).map(s => s.trim()).filter(Boolean);
+  if (tokens.length === 0) return;
+
+  appState.steps = tokens.map(tok => {
+    const type = inferStepTypeFromText(tok);
+    const def = STEP_LIBRARY[type] || STEP_LIBRARY.custom_step;
+    // Extract optional bracket parameter e.g. 雷射鑽孔(CO2 80um)
+    const match = tok.match(/^(.+?)[（(](.+?)[)）]$/);
+    const title = match ? match[1].trim() : tok;
+    const param = match ? match[2].trim() : def.defaultParam;
+    return {
+      id: uid(),
+      type,
+      title,
+      param,
+      note: def.defaultNote
+    };
+  });
+
+  appState.activeStepIndex = appState.steps.length - 1;
+  saveState();
+  closeQuickSyntaxModal();
+  renderAll();
+  showToast(`已成功解析 ${appState.steps.length} 個步驟並生成示意圖！`);
+}
+
+/* ============================================================================
+   11. EXPORT MODULE (SVG / 3x Retina PNG / JSON)
+   ============================================================================ */
+function getSvgStringByTarget(target) {
+  const snapshots = simulateCrossSectionStates(appState.steps);
+  const idx = Math.min(appState.activeStepIndex, snapshots.length - 1);
+
+  if (target === 'flowchart') {
+    return generateFlowchartSVG(appState.steps, idx);
+  } else if (target === 'crosssection') {
+    return generateSingleOrCompareCrossSectionSVG(snapshots, idx);
+  } else if (target === 'storyboard') {
+    return generateStoryboardPosterSVG(snapshots);
+  } else {
+    // 'current' button in top header exports Storyboard if in storyboard mode, or Storyboard complete poster
+    return appState.viewMode === 'storyboard'
+      ? generateStoryboardPosterSVG(snapshots)
+      : generateStoryboardPosterSVG(snapshots);
+  }
+}
+
+function exportSVG(target) {
+  const svgStr = getSvgStringByTarget(target);
+  const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pcb_process_${target}_${Date.now()}.svg`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('已匯出無損向量 SVG 檔案！');
+}
+
+function exportPNG(target) {
+  const svgStr = getSvgStringByTarget(target);
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgStr, 'image/svg+xml');
+  const svgEl = doc.documentElement;
+  const w = parseFloat(svgEl.getAttribute('width')) || 1200;
+  const h = parseFloat(svgEl.getAttribute('height')) || 800;
+
+  const scale = 2.5; // High-DPI Retina export for crisp PPT presentations
+  const canvas = document.createElement('canvas');
+  canvas.width = w * scale;
+  canvas.height = h * scale;
+  const ctx = canvas.getContext('2d');
+
+  const img = new Image();
+  const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+
+  img.onload = () => {
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+    canvas.toBlob((pngBlob) => {
+      const pngUrl = URL.createObjectURL(pngBlob);
+      const a = document.createElement('a');
+      a.href = pngUrl;
+      a.download = `pcb_process_${target}_${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(pngUrl);
+      showToast('已匯出高解析度 PNG 圖片！');
+    }, 'image/png');
+  };
+  img.src = url;
+}
+
+function exportProjectJSON() {
+  const data = JSON.stringify({
+    version: '1.0',
+    exportedAt: new Date().toISOString(),
+    steps: appState.steps
+  }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pcb_flow_project_${Date.now()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('已儲存專案 JSON 設定檔！');
+}
+
+function importProjectJSON(ev) {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const obj = JSON.parse(e.target.result);
+      if (Array.isArray(obj.steps) && obj.steps.length > 0) {
+        appState.steps = obj.steps;
+        appState.activeStepIndex = appState.steps.length - 1;
+        saveState();
+        renderAll();
+        showToast('已成功載入流程設定檔！');
+      }
+    } catch (err) {
+      alert('JSON 格式錯誤，無法載入');
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+}
+
+/* ============================================================================
+   12. UTILITIES
+   ============================================================================ */
+function escapeHtml(str = '') {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function escapeXml(str = '') {
+  return escapeHtml(str).replace(/'/g, '&apos;');
+}
+
+function truncateStr(str = '', maxLen = 16) {
+  return str.length > maxLen ? str.slice(0, maxLen - 1) + '…' : str;
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toastMsg');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// Initialize on load
+window.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
